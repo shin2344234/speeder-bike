@@ -1,0 +1,20 @@
+{
+  "name": "Speeder Bike",
+  "fileBase": "SpeederBike",
+  "version": { "header": "mod/src/version.h", "macro": "BM_VERSION" },
+  "scriptsDir": "mod/scripts",
+  "dist": "mod/dist",
+  "sources": ["mod/src", "mod/SpeederBike.ini", "mod/CMakeLists.txt", "mod/assets"],
+  "manualZip": ["mod/README.md", "LICENSE", "THIRD_PARTY_NOTICES.md"],
+  "gates": [
+    {
+      "name": "the INI Master metadata matches mod.cpp",
+      "run": "py -3 scripts\\check_inimeta.py"
+    }
+  ],
+  "evergreen": ["private/nexus/nexus-description.bbcode", "README.md"],
+  "github": "shin2344234/speeder-bike",
+  "nexus": { "game": "crimsondesert", "page": "3656", "modId": "38521561681480", "dmmFileId": "8090601", "manualFileId": "8090598" },
+  "discord": { "channel": "1547305058922668072" },
+  "requires": []
+}

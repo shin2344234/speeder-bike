@@ -1,0 +1,60 @@
+#pragma once
+#include <cstdint>
+
+// Function hooks with absolute 64-bit jumps. MinHook needs a scratch page
+// within 1 GB of the target and the game's image is surrounded by its own
+// DLLs with nothing free nearby, so MH_CreateHook fails there with
+// MH_ERROR_MEMORY_ALLOC. These hooks steal the first instructions (measured
+// with MinHook's HDE decoder, rejected if any is rip-relative), put them in a
+// trampoline anywhere in memory, and patch `mov rax, detour; jmp rax` over the
+// entry. Other threads are suspended around the write.
+namespace bm::farhook
+{
+    // Installs a detour. *original receives the trampoline (callable as the
+    // original function). Returns false and fills `why` on failure.
+    bool Install(const char* name, uintptr_t target, void* detour, void** original, char* why, unsigned whyLen);
+
+    // For a target another mod has already detoured with a five-byte `jmp
+    // rel32` over its entry. Install would refuse the relative branch, and
+    // its twelve-byte patch would land where that mod's trampoline jumps back
+    // to. Instead a fourteen-byte relay to the detour goes into a run of int3
+    // padding inside the game image, which a rel32 always reaches, and only
+    // the jump's four-byte offset changes to point at it. *original jumps on
+    // to the other mod's detour, so both run and the original runs last.
+    //
+    // `target` may also be a five-byte `call rel32` inside a function: then
+    // only that one call goes to the detour, and *original is the function it
+    // called.
+    bool InstallOverJump(const char* name, uintptr_t target, void* detour, void** original, char* why, unsigned whyLen);
+
+    // For an entry another mod has patched with an absolute jump: `mov rax,
+    // imm64; jmp rax`, which is what CDAutoLoot writes and what Install here
+    // writes too, or `jmp [rip+0]` with the address after it. Only the eight
+    // address bytes change, to the detour, and *original jumps to the address
+    // they held, so the other mod's detour still runs and the original last.
+    bool InstallOverAbsJump(const char* name, uintptr_t target, void* detour, void** original, char* why, unsigned whyLen);
+
+    // What InstallOverAbsJump would take over: the address such a patch jumps
+    // to, or 0 when the entry is not one.
+    uintptr_t AbsJumpTarget(uintptr_t target);
+    // Replaces `len` bytes at `at`, which must read `expect`, with a jump to
+    // `code` (copied to Broomy's code page through a relay in int3 padding)
+    // and nops. `code` holds the replaced instructions' work and jumps back
+    // with absolute jumps of its own; `placed` receives where it was copied.
+    // RemoveAll puts the bytes back.
+    bool InstallBranch(const char* name, uintptr_t at, const unsigned char* expect, unsigned len,
+                       const unsigned char* code, unsigned codeLen, uintptr_t* placed, char* why, unsigned whyLen);
+
+    // Whether another mod has already patched the entry at `target`: an
+    // absolute jump, or a five-byte `jmp rel32`.
+    bool Patched(uintptr_t target);
+    // A function by its pattern, which starts at its entry. Broomy.asi loads
+    // first and patches some of the same entries, so when the pattern finds
+    // nothing and the entry at `rva` (exe 1.0.0.2976) is patched, that is
+    // the function.
+    uintptr_t Locate(const char* pattern, uintptr_t rva);
+    // Install, InstallOverAbsJump or InstallOverJump, whichever the entry
+    // needs: the detour runs first, then the other mod's, then the game's.
+    bool Chain(const char* name, uintptr_t target, void* detour, void** original, char* why, unsigned whyLen);
+    void RemoveAll();
+}
