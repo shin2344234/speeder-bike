@@ -1,4 +1,4 @@
-# Speeder Bike 1.0.0
+# Speeder Bike 1.0.1
 
 For Crimson Desert 2.03.02, exe 1.0.0.2976.
 
@@ -37,6 +37,8 @@ never leaves the ground.
 
 On a controller the speed follows how far the left stick is pushed. The
 keyboard always moves at full speed.
+
+If the speeder faints, it can be called again a second later.
 
 ## Settings
 
