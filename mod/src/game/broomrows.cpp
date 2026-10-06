@@ -25,6 +25,7 @@ namespace bm::broomrows
         constexpr uint16_t kVehicleKey = 20001;
         constexpr const char* kVehicleName = "Speeder";
         constexpr uint8_t  kBroomyMerc = 87;           // Broomy's Vehicle_Broom
+        constexpr uint64_t kFaintSeconds = 1;          // the ibex's is 300
 
         // Riding_AlpineIbex_1, a riding row the game no longer uses.
         constexpr uint32_t kIbexKey = 29448;
@@ -249,6 +250,16 @@ namespace bm::broomrows
             if (!Once(rec, Bytes<uint16_t>(kIbexVehicle) + Bytes<uint16_t>(300), "the ibex's vehicle key", at, why))
                 return false;
             Poke<uint16_t>(rec, at, kVehicleKey);
+            // _callMercenaryCoolTime, u64 seconds. Under _mercenaryCoolTimeType
+            // 1 it is how long a fainted mount cannot be called ("Cannot summon
+            // because it's fainted"). One second rather than 0 keeps the timer,
+            // and the HP refill at its end, running as for the ibex.
+            if (Peek<uint64_t>(rec, at + 2) != 300)
+            {
+                why = "the ibex's call cooldown is not 300";
+                return false;
+            }
+            Poke<uint64_t>(rec, at + 2, kFaintSeconds);
 
             // _mercenaryInfo, the u8 just before the hire message's
             // localized string.
