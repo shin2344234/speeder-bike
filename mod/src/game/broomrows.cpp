@@ -26,6 +26,7 @@ namespace bm::broomrows
         constexpr const char* kVehicleName = "Speeder";
         constexpr uint8_t  kBroomyMerc = 87;           // Broomy's Vehicle_Broom
         constexpr uint64_t kFaintSeconds = 1;          // the ibex's is 300
+        constexpr uint32_t kVanishMs = 1000;           // the ibex's (and every riding row's) is 900000
 
         // Riding_AlpineIbex_1, a riding row the game no longer uses.
         constexpr uint32_t kIbexKey = 29448;
@@ -292,6 +293,19 @@ namespace bm::broomrows
                 return false;
             }
             rec[flags + kHirableIndex] = 1;
+            // _vanishTickCount, u32 milliseconds, the 4 bytes between the flag
+            // run and _uiPortraitPath, taken to be how long a fainted body
+            // stays in the world. With the ibex's 15 minutes and the 1 second
+            // faint timer, a fainted speeder was still refused 15 s after the
+            // ride and could be called again only after a reload, which
+            // clears every body (Buxunqingmo's 1.0.1 log, 6 October). Not yet
+            // seen in play.
+            if (Peek<uint32_t>(rec, at - 4) != 900000)
+            {
+                why = "the ibex's vanish time is not 900000 ms";
+                return false;
+            }
+            Poke<uint32_t>(rec, at - 4, kVanishMs);
 
             // _interactionInfoList: the ibex's two ride interactions become
             // Broom_Ride alone.

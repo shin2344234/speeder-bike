@@ -265,6 +265,42 @@ namespace
         return r;
     }
 
+    // The speeder's entry in the player's server roster, as hex, whenever it
+    // differs from the last one logged. A fainted speeder that would not come
+    // until a reload (Buxunqingmo, 6 October) should show here as the field
+    // that changes at the faint and again at the reload.
+    void LogSpeederEntry()
+    {
+        static uint8_t last[0x100];
+        static bool logged = false;
+        const int row = bm::broomy::Row();
+        const uintptr_t clan = g_seenCount ? g_seen[0].clan : 0;
+        uint32_t count = 0;
+        uintptr_t arr = 0;
+        if (row < 0 || !clan || !bm::mem::Read32(clan + kOff_Clan_Count, &count) ||
+            !bm::mem::ReadPtr(clan + kOff_Clan_Array, &arr) || count > 1000)
+            return;
+        for (uint32_t k = 0; k < count; ++k)
+        {
+            uintptr_t el = 0, entry = 0;
+            uint16_t r = 0;
+            if (!bm::mem::ReadPtr(arr + 8ull * k, &el) || !bm::mem::ReadPtr(el + kOff_ClanEl_Entry, &entry) ||
+                !bm::mem::Read16(entry + kOff_ClanEnt_Row, &r) || r != row)
+                continue;
+            uint8_t now[0x100];
+            for (int i = 0; i < 0x100; i += 8)
+                if (!bm::mem::Read64(entry + i, reinterpret_cast<uint64_t*>(now + i))) return;
+            if (logged && memcmp(now, last, sizeof now) == 0) return;
+            memcpy(last, now, sizeof now);
+            logged = true;
+            char hex[0x100 * 3 + 1];
+            for (int i = 0; i < 0x100; ++i) snprintf(hex + i * 3, 4, "%02X ", now[i]);
+            hex[0x100 * 3 - 1] = 0;
+            LOG("[wedge] the speeder's roster entry: %s", hex);
+            return;
+        }
+    }
+
     uint64_t SendDetour(uintptr_t ctx, uintptr_t buffer, uintptr_t kind, uintptr_t message, uintptr_t length,
                         uintptr_t a6, uintptr_t a7)
     {
@@ -275,6 +311,7 @@ namespace
             if (id == 0x0AC1) bm::mem::Read32(message + 5, &slot);
             LOG("[wedge] request 0x%04X sent (%s, slot %u).", id,
                 id == 0x0AC1 ? "a wedge was chosen" : "the mount is called", slot);
+            LogSpeederEntry();
         }
         if (id == kReq_LoadingComplete)
         {
