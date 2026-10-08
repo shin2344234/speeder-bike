@@ -230,6 +230,8 @@ int main(int argc, char** argv)
         printf("charts: %s\n", ok ? report.c_str() : why.c_str());
         Expect(ok && report.find("25 of 25 branches into the air cut") != std::string::npos,
                "every branch into the air is cut");
+        Expect(ok && report.find("110 of 110 cameras the horse's") != std::string::npos,
+               "every riding camera but the aim is the horse's");
         // Broomy serves the broom's own clips and blend at the broom's paths,
         // so the speeder's charts must name none of them.
         bool own = ok;

@@ -1,5 +1,6 @@
 #include "game/broomchart.h"
 #include "game/boostpatches.h"
+#include "game/camerapatches.h"
 #include "game/crossfadepatches.h"
 #include "game/rightmountpatches.h"
 #include "game/takeoffpatches.h"
@@ -410,10 +411,20 @@ namespace bm::broomchart
             Poke<uint32_t>(c, p.at, p.broomy);
             ++takeoff;
         }
-        char line[900];
+        // The horse's camera, not the dragon's 20 to 35 m back
+        // (camerapatches.h).
+        size_t camera = 0;
+        for (const HoverPatch& p : kCameraPatches)
+        {
+            std::string& c = out[p.chart];
+            if (p.at + 4 > c.size() || Peek<uint32_t>(c, p.at) != p.wyvern) continue;
+            Poke<uint32_t>(c, p.at, p.broomy);
+            ++camera;
+        }
+        char line[960];
         snprintf(line, sizeof line,
                  "%zu animation paths and %zu blend paths are the broom's, padded with zeros; %zu riding action%s keyed "
-                 "to Broom_Ride; %zu of %zu ground branches go to flight%s; %zu of %zu Wyvern sound events silenced; %zu of %zu boost edits; %zu of %zu speeds set (ground %d%%, flight %d%%, boost %d%%, climb %d%%); %zu of %zu roll and glide branches cut; %zu of %zu shakes, rumbles and effects removed; %zu of %zu RideOn flight nodes on the blend; %zu of %zu mount edits; %zu of %zu aim IK edits; %zu of %zu crossfades eased; %zu of %zu right-side mount edits; %zu of %zu takeoff edits; %zu of %zu branches into the air cut",
+                 "to Broom_Ride; %zu of %zu ground branches go to flight%s; %zu of %zu Wyvern sound events silenced; %zu of %zu boost edits; %zu of %zu speeds set (ground %d%%, flight %d%%, boost %d%%, climb %d%%); %zu of %zu roll and glide branches cut; %zu of %zu shakes, rumbles and effects removed; %zu of %zu RideOn flight nodes on the blend; %zu of %zu mount edits; %zu of %zu aim IK edits; %zu of %zu crossfades eased; %zu of %zu right-side mount edits; %zu of %zu takeoff edits; %zu of %zu branches into the air cut; %zu of %zu cameras the horse's",
                  anims.size(), blends.size(), keyed, keyed == 1 ? "" : "s", hover, hover + skipped,
                  skipped ? " (the rest did not hold the Wyvern's value)" : "", quiet,
                  sizeof kQuietPatches / sizeof kQuietPatches[0], boost, sizeof kBoostPatches / sizeof kBoostPatches[0], speed,
@@ -426,7 +437,8 @@ namespace bm::broomchart
                  crossfade, sizeof kCrossfadePatches / sizeof kCrossfadePatches[0], right,
                  sizeof kRightMountPatches / sizeof kRightMountPatches[0], takeoff,
                  sizeof kTakeoffPatches / sizeof kTakeoffPatches[0], grounded,
-                 sizeof kGroundPatches / sizeof kGroundPatches[0]);
+                 sizeof kGroundPatches / sizeof kGroundPatches[0], camera,
+                 sizeof kCameraPatches / sizeof kCameraPatches[0]);
         report = line;
         return true;
     }
