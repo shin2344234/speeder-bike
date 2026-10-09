@@ -150,6 +150,17 @@ namespace
     constexpr LONG kSettleMs = 400;
     volatile uint32_t g_dismountOff = 0;
     volatile LONG g_dismountAt = 0, g_upperOtherAt = 0;
+    // While Kliff sits on the speeder his upper layer checks, every frame,
+    // branches that lead to the broom's two dismounts: from the mount, the
+    // broom idle and EFD5260B (SpeederBike.log, 5 October 09:07, the layer's
+    // checks of +0x49EF8 and +0x49F2C every 2 s for the whole ride, which is
+    // the log's limit). No horse or dragon state leads there, so a check of
+    // one is Kliff on the speeder (or Broomy), whoever else rides nearby.
+    // Off the speeder by any other way than those dismounts (thrown off as
+    // the speeder faints, Buxunqingmo's 1.0.2 log at 12:44) the checks stop,
+    // while the speeder's RideOn chart runs on.
+    constexpr uint32_t kBroomDismounts[] = { 0x18064912, 0x8B293B1B };
+    volatile LONG g_seatedAt = 0;
     struct Field { uint32_t at, size; };
     constexpr Field kDonorKeeps[] = { { kKeyAt, 4 }, { 0x54, 4 }, { 0xEA, 2 } };   // key, node_first, node_count
     uint32_t g_upperAt[kUpperCount] = {};
@@ -224,7 +235,12 @@ namespace
                 if (g_dismountOff && pre == g_upperBase + g_dismountOff)
                     InterlockedExchange(&g_dismountAt, static_cast<LONG>(GetTickCount()));
                 else if (In(pre, g_upperBase, g_upperSize))
+                {
                     InterlockedExchange(&g_upperOtherAt, static_cast<LONG>(GetTickCount()));
+                    uint32_t to = 0;
+                    if (bm::mem::Read32(pre + 0x14, &to) && (to == kBroomDismounts[0] || to == kBroomDismounts[1]))
+                        InterlockedExchange(&g_seatedAt, static_cast<LONG>(GetTickCount()));
+                }
                 const LONG at = g_rideOnAt;
                 const bool ridden = at && GetTickCount() - static_cast<DWORD>(at) < kRiddenMs;
                 if (ridden != (g_swapped != 0)) SetSwap(ridden);
@@ -389,6 +405,12 @@ namespace bm::riderfix
     uint32_t MsSinceRidden()
     {
         const LONG at = g_rideOnAt;
+        return at ? GetTickCount() - static_cast<DWORD>(at) : 0xFFFFFFFFu;
+    }
+
+    uint32_t MsSinceSeated()
+    {
+        const LONG at = g_seatedAt;
         return at ? GetTickCount() - static_cast<DWORD>(at) : 0xFFFFFFFFu;
     }
 

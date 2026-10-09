@@ -28,6 +28,10 @@ namespace bm::riderfix
     // Milliseconds since the speeder's RideOn chart was last checked, which
     // is every frame while it is ridden; a large number before the first.
     uint32_t MsSinceRidden();
+    // Milliseconds since Kliff's upper riding layer last checked a branch to
+    // the broom's dismounts, which it does every frame while he sits on the
+    // speeder; a large number before the first.
+    uint32_t MsSinceSeated();
     // From the start of Kliff's broom dismount until his upper riding layer
     // is back in another state, which it is when he mounts again.
     bool GettingOff();

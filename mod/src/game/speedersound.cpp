@@ -24,6 +24,12 @@ namespace
     // The RideOn chart is checked every frame while the speeder is ridden,
     // so a gap this long means Kliff got off or a menu paused the game.
     constexpr DWORD kRiddenMs = 400;
+    // That chart also runs on when Kliff leaves the speeder by any way other
+    // than its dismounts, so he must also be seated (riderfix's
+    // MsSinceSeated, every frame on the speeder). Buxunqingmo, 9 October:
+    // the engine went on wherever he went, at full volume, after the speeder
+    // threw him. The longer wait lets a hit or a stagger in the saddle pass.
+    constexpr DWORD kSeatedMs = 2000;
     // A speed record older than this means the speeder stands still.
     constexpr DWORD kSpeedMs = 250;
     // The speeder's top speed on the ground (m/s), from Start: it reaches
@@ -168,7 +174,9 @@ namespace
             // The RideOn chart runs on after Kliff gets off, so the engine
             // stops as he starts getting off and starts again as he mounts.
             const bool off = bm::riderfix::GettingOff();
-            const bool ridden = bm::riderfix::MsSinceRidden() < kRiddenMs && !off, front = GameInFront();
+            const bool ridden = bm::riderfix::MsSinceRidden() < kRiddenMs &&
+                                bm::riderfix::MsSinceSeated() < kSeatedMs && !off,
+                       front = GameInFront();
             const bool on = ridden && front;
             if (ridden != wasRidden && front)
             {
