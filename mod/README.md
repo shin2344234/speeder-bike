@@ -1,4 +1,4 @@
-# Speeder Bike 1.0.2
+# Speeder Bike 1.0.3
 
 For Crimson Desert 2.03.02, exe 1.0.0.2976.
 
@@ -31,7 +31,7 @@ blue speeder marks it on the map and the minimap.
 ## Riding
 
 Mount from either side. The engine starts as Kliff gets on and shuts down as
-he gets off. It idles at rest, climbs in pitch as you speed up, and a soft
+he gets off. If he is thrown off, it shuts down 2 seconds later. It idles at rest, climbs in pitch as you speed up, and a soft
 whine joins it at full speed. The jump key does nothing, since the speeder
 never leaves the ground.
 
@@ -41,7 +41,7 @@ keyboard always moves at full speed.
 The camera sits as close behind as it does on a horse. The back button or
 the mouse wheel moves it out.
 
-If the speeder faints, it can be called again a second later.
+If the speeder faints, calling it brings a new one right away.
 
 ## Settings
 

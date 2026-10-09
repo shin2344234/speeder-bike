@@ -1,6 +1,6 @@
 #pragma once
 
-#define BM_VERSION  "1.0.2"
+#define BM_VERSION  "1.0.3"
 #define BM_NAME     "Speeder Bike"
 // Base name of the plugin's files next to it: SpeederBike.asi, .ini, .log.
 #define BM_FILEBASE L"SpeederBike"

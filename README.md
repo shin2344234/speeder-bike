@@ -65,7 +65,14 @@ speed. From 90 percent of the top speed the boost start plays and a softened
 whine joins the engine, until the speed stays under 85 percent for 300 ms. A
 jump in speed of 30 percent of the top speed plays the acceleration, or the
 boost's stop, quieter, when slowing down. The start-up plays on mounting and
-the shutdown as Kliff starts to get off.
+the shutdown as Kliff starts to get off. If he leaves the speeder any other
+way, such as being thrown off, the shutdown plays 2 seconds after his
+riding layers stop checking the broom's dismounts.
+
+A fainted speeder is a new one when called. The game refuses to call a
+mount whose actor is down, so when its own check finds the speeder fainted,
+the plugin clears the speeder's roster entry, as loading a save does, and
+the call spawns a fresh speeder.
 
 ## Beside Broomy
 
