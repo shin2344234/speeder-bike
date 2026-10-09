@@ -436,6 +436,94 @@ namespace
         return bm::mem::Read8(call, &op) && op == 0xE8 ? bm::mem::RipAt(call, 5) : 0;
     }
 
+    // A fainted speeder. Its row's _callMercenaryCoolTime has been 1 second
+    // since 1.0.1 and its _vanishTickCount 1000 ms since 1.0.2, yet the call
+    // stayed refused: in Buxunqingmo's 1.0.2 log (9 October) from 12:25:09
+    // until 12:30:45 with no load between, about the ibex's old 300 s, and
+    // after the 12:45 faint until the log ended. A load always clears it,
+    // because the fainted actor is not loaded again and the roster entry
+    // names no actor. This does the same at the call: when the client's
+    // check finds the speeder down, the lookup result is let go as the check
+    // itself would, so the check takes its path for a mount that is not out,
+    // and the server roster entry's actor id is cleared (StoreBroomy), so
+    // the server spawns a fresh speeder for the call.
+    typedef uint64_t (*FnCallLookup)(uintptr_t manager, uintptr_t out, uintptr_t id);
+    typedef void (*FnReleaseResult)(uintptr_t out);
+    typedef bool (*FnGroggy)(uintptr_t status);
+    FnCallLookup    g_callLookupOriginal = nullptr;
+    FnReleaseResult g_releaseResult = nullptr;
+    FnGroggy        g_groggy = nullptr;
+
+    uint64_t CallLookupDetour(uintptr_t manager, uintptr_t out, uintptr_t id)
+    {
+        const uint64_t r = g_callLookupOriginal(manager, out, id);
+        const uintptr_t res = r ? static_cast<uintptr_t>(r) : out;
+        const int row = bm::broomy::Row();
+        uint8_t found = 0, deadA = 0, deadB = 0;
+        uintptr_t actor = 0, block = 0, comp = 0, self = 0, selfBlock = 0, status = 0;
+        uint16_t charRow = 0;
+        uint32_t groggy = 0;
+        if (row < 0 || !bm::mem::Read8(res + kOff_Lookup_Found, &found) || !found ||
+            !bm::mem::ReadPtr(res + kOff_Lookup_Actor, &actor) || !bm::mem::ReadPtr(actor + kOff_Actor_Block, &block) ||
+            !bm::mem::ReadPtr(block + kOff_Block_Owner, &comp) || !bm::mem::ReadPtr(comp + kOff_MountComp_Actor, &self) ||
+            !bm::mem::ReadPtr(self + kOff_Actor_Block, &selfBlock) ||
+            !bm::mem::ReadPtr(selfBlock + kOff_Block_Status, &status) ||
+            !bm::mem::Read16(status + kOff_Status_CharRow, &charRow) || charRow != row ||
+            !bm::mem::Read8(status + kOff_Status_DeadA, &deadA) || !bm::mem::Read8(status + kOff_Status_DeadB, &deadB) ||
+            !bm::mem::Read32(status + kOff_Status_Groggy, &groggy))
+            return r;
+        const bool isGroggy = !deadA && !deadB && static_cast<int32_t>(groggy) > 0 && g_groggy && g_groggy(status);
+        if (!deadA && !deadB && !isGroggy)
+        {
+            LOG("[faint] the speeder (actor %08X) is up at the call (+0x272 %u, +0x273 %u, +0x320 %d).",
+                static_cast<uint32_t>(id), deadA, deadB, static_cast<int32_t>(groggy));
+            return r;
+        }
+        const bool stored = g_seenCount && StoreBroomy(g_seen[0].clan, static_cast<uint32_t>(id));
+        if (!stored)
+        {
+            LOG_ERR("[faint] the speeder (actor %08X) is down at the call (+0x272 %u, +0x273 %u, +0x320 %d), but its "
+                    "roster entry was not found to clear, so the game refuses the call.",
+                    static_cast<uint32_t>(id), deadA, deadB, static_cast<int32_t>(groggy));
+            return r;
+        }
+        g_releaseResult(res);
+        // The result is the check's own stack object.
+        *reinterpret_cast<uint8_t*>(res + kOff_Lookup_Found) = 0;
+        *reinterpret_cast<uintptr_t*>(res + kOff_Lookup_Actor) = 0;
+        LOG("[faint] the speeder (actor %08X) is down at the call (+0x272 %u, +0x273 %u, +0x320 %d, %s); its roster "
+            "entry is cleared, so the call brings a fresh one.",
+            static_cast<uint32_t>(id), deadA, deadB, static_cast<int32_t>(groggy), isGroggy ? "groggy" : "dead");
+        return r;
+    }
+
+    void InstallCallCheck()
+    {
+        size_t hits = 0;
+        const uintptr_t at = bm::mem::FindUnique(kSig_CallCheck, &hits);
+        const uintptr_t release = at && bm::mem::MatchAt(at + kOff_CallCheck_ReleaseSig, kSig_CallCheckRelease)
+                                      ? CallTarget(at + kOff_CallCheck_ReleaseSig + 4) : 0;
+        const uintptr_t groggy = at && bm::mem::MatchAt(at + kOff_CallCheck_GroggySig, kSig_CallCheckGroggy)
+                                     ? CallTarget(at + kOff_CallCheck_GroggySig + 3) : 0;
+        if (!at || !release || !groggy)
+        {
+            LOG_ERR("[faint] the mount call's check was found %zu times (release %s, groggy test %s), so a fainted speeder "
+                    "waits as the game says.", hits, release ? "found" : "missing", groggy ? "found" : "missing");
+            return;
+        }
+        g_releaseResult = reinterpret_cast<FnReleaseResult>(release);
+        g_groggy = reinterpret_cast<FnGroggy>(groggy);
+        char why[96] = {};
+        if (!bm::farhook::InstallOverJump("mount call check lookup", at + kOff_CallCheck_Lookup,
+                                          reinterpret_cast<void*>(&CallLookupDetour),
+                                          reinterpret_cast<void**>(&g_callLookupOriginal), why, sizeof why))
+        {
+            LOG_ERR("[faint] could not hook the mount call's check (%s), so a fainted speeder waits as the game says.", why);
+            return;
+        }
+        LOG("[faint] a call while the speeder is down brings a fresh one.");
+    }
+
     // True when a roster the last check read is no longer where it was.
     bool RostersChanged(uintptr_t vt)
     {
@@ -481,6 +569,7 @@ namespace bm::grant
             LOG_ERR("[grant] could not hook (%s%s%s%s), so the speeder is not given this session.", why, why2, why3, why4);
             return false;
         }
+        InstallCallCheck();
         LOG("[grant] ready: %u seconds after a save loads, the roster is checked for the speeder.",
             static_cast<unsigned>(kGrantDelayMs / 1000));
         return true;
