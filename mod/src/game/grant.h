@@ -8,8 +8,10 @@
 // hire reads that row, so Broomy is who joins.
 namespace bm::grant
 {
-    // From the worker thread once the log is claimed.
-    bool Install();
+    // From the worker thread once the log is claimed. The hooks and the
+    // roster check run either way, because the faint fix at the call needs them.
+    // Only with give is a save without the speeder given one.
+    bool Install(bool give);
     // From the worker thread, twice a second.
     void Tick();
 }

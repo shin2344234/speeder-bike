@@ -154,7 +154,7 @@ namespace
             LOG_ERR("[mod] the speeder's files are not being served (see the [files] line above), so the speeder does "
                     "not exist this session.");
         if (g_serving && g_broomy) WaitForBroomy();
-        const bool granting = g_serving && give && bm::grant::Install();
+        const bool granting = g_serving && bm::grant::Install(give);
         // Broomy guards the same equipment copies for every mount.
         if (g_serving && !g_broomy) bm::equipfix::Install();
         bm::analogspeed::SetSlowest(ReadSetting(L"SlowestPush", 15));

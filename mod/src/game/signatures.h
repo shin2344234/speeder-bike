@@ -177,8 +177,6 @@ namespace bm::sig
     inline constexpr unsigned kOff_CallCheck_Lookup = 0x22;
     inline constexpr unsigned kOff_CallCheck_ReleaseSig = 0x79;
     inline constexpr const char* kSig_CallCheckRelease = "48 8D 4D B0 E8";
-    inline constexpr unsigned kOff_CallCheck_GroggySig = 0xF7;
-    inline constexpr const char* kSig_CallCheckGroggy = "48 8B CB E8";
     inline constexpr unsigned kOff_MountComp_Actor = 0x08;
     inline constexpr unsigned kOff_Status_DeadA = 0x272;
     inline constexpr unsigned kOff_Status_DeadB = 0x273;

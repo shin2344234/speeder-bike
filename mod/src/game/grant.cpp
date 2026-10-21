@@ -65,6 +65,7 @@ namespace
     volatile LONG g_waitLogged = 0;
     volatile LONG g_rejected[kGrantTries] = {};
     volatile LONG g_checkWindow = 0, g_checks = 0;
+    bool          g_give = true;   // GiveSpeeder; without it the roster is read, never added to
 
     // The swap: while the grant's hire runs, its lookup of that actor points
     // the actor's row at Broomy's; the hire puts it back when it returns.
@@ -446,13 +447,18 @@ namespace
     // check finds the speeder down, the lookup result is let go as the check
     // itself would, so the check takes its path for a mount that is not out,
     // and the server roster entry's actor id is cleared (StoreBroomy), so
-    // the server spawns a fresh speeder for the call.
+    // the server spawns a fresh speeder for the call. Only the dead bytes
+    // count, which the game itself reads unlocked. Its groggy test
+    // (+0x1794ED0) runs under a reader lock on [[status+8]+8] that a detour
+    // here does not hold, and +0x320 reads 2 at every call of a mount that
+    // is up (Broomy's logs), so calling it would race on every call; a wrong
+    // "groggy" would clear the roster entry of a speeder still out and the
+    // call would bring a second one (review, 21 October). A groggy speeder
+    // waits out its stun as the game says.
     typedef uint64_t (*FnCallLookup)(uintptr_t manager, uintptr_t out, uintptr_t id);
     typedef void (*FnReleaseResult)(uintptr_t out);
-    typedef bool (*FnGroggy)(uintptr_t status);
     FnCallLookup    g_callLookupOriginal = nullptr;
     FnReleaseResult g_releaseResult = nullptr;
-    FnGroggy        g_groggy = nullptr;
 
     uint64_t CallLookupDetour(uintptr_t manager, uintptr_t out, uintptr_t id)
     {
@@ -472,8 +478,7 @@ namespace
             !bm::mem::Read8(status + kOff_Status_DeadA, &deadA) || !bm::mem::Read8(status + kOff_Status_DeadB, &deadB) ||
             !bm::mem::Read32(status + kOff_Status_Groggy, &groggy))
             return r;
-        const bool isGroggy = !deadA && !deadB && static_cast<int32_t>(groggy) > 0 && g_groggy && g_groggy(status);
-        if (!deadA && !deadB && !isGroggy)
+        if (!deadA && !deadB)
         {
             LOG("[faint] the speeder (actor %08X) is up at the call (+0x272 %u, +0x273 %u, +0x320 %d).",
                 static_cast<uint32_t>(id), deadA, deadB, static_cast<int32_t>(groggy));
@@ -491,9 +496,9 @@ namespace
         // The result is the check's own stack object.
         *reinterpret_cast<uint8_t*>(res + kOff_Lookup_Found) = 0;
         *reinterpret_cast<uintptr_t*>(res + kOff_Lookup_Actor) = 0;
-        LOG("[faint] the speeder (actor %08X) is down at the call (+0x272 %u, +0x273 %u, +0x320 %d, %s); its roster "
-            "entry is cleared, so the call brings a fresh one.",
-            static_cast<uint32_t>(id), deadA, deadB, static_cast<int32_t>(groggy), isGroggy ? "groggy" : "dead");
+        LOG("[faint] the speeder (actor %08X) is down at the call (+0x272 %u, +0x273 %u, +0x320 %d); its roster entry "
+            "is cleared, so the call brings a fresh one.",
+            static_cast<uint32_t>(id), deadA, deadB, static_cast<int32_t>(groggy));
         return r;
     }
 
@@ -503,16 +508,13 @@ namespace
         const uintptr_t at = bm::mem::FindUnique(kSig_CallCheck, &hits);
         const uintptr_t release = at && bm::mem::MatchAt(at + kOff_CallCheck_ReleaseSig, kSig_CallCheckRelease)
                                       ? CallTarget(at + kOff_CallCheck_ReleaseSig + 4) : 0;
-        const uintptr_t groggy = at && bm::mem::MatchAt(at + kOff_CallCheck_GroggySig, kSig_CallCheckGroggy)
-                                     ? CallTarget(at + kOff_CallCheck_GroggySig + 3) : 0;
-        if (!at || !release || !groggy)
+        if (!at || !release)
         {
-            LOG_ERR("[faint] the mount call's check was found %zu times (release %s, groggy test %s), so a fainted speeder "
-                    "waits as the game says.", hits, release ? "found" : "missing", groggy ? "found" : "missing");
+            LOG_ERR("[faint] the mount call's check was found %zu times (release %s), so a fainted speeder waits as the "
+                    "game says.", hits, release ? "found" : "missing");
             return;
         }
         g_releaseResult = reinterpret_cast<FnReleaseResult>(release);
-        g_groggy = reinterpret_cast<FnGroggy>(groggy);
         char why[96] = {};
         if (!bm::farhook::InstallOverJump("mount call check lookup", at + kOff_CallCheck_Lookup,
                                           reinterpret_cast<void*>(&CallLookupDetour),
@@ -540,8 +542,9 @@ namespace
 
 namespace bm::grant
 {
-    bool Install()
+    bool Install(bool give)
     {
+        g_give = give;
         const uintptr_t send = farhook::Locate(kSig_SendRequest, kRva_SendRequest);
         const uintptr_t hire = farhook::Locate(kSig_ServerHire, kRva_ServerHire);
         const uintptr_t move = farhook::Locate(kSig_ServerMoveHandler, kRva_ServerMoveHandler);
@@ -650,6 +653,12 @@ namespace bm::grant
         {
             LOG("[grant] the speeder (row %d) is already in this save's roster (%d roster%s looked through in %lu ms), so "
                 "nothing is given.", row, rosters, rosters == 1 ? "" : "s", took);
+            return;
+        }
+        if (!g_give)
+        {
+            LOG("[grant] this save has no speeder (%d roster%s looked through in %lu ms), and GiveSpeeder=0, so none is "
+                "given.", rosters, rosters == 1 ? "" : "s", took);
             return;
         }
         // The last wild horse seen while the save loaded stays the
