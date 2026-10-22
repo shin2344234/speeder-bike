@@ -81,6 +81,24 @@ int main(int argc, char** argv)
         return 2;
     }
     const std::string in = std::string(argv[1]) + "/";
+    // A header offset at the end of the body is an empty last record, not an
+    // overrun (GitHub issue 1).
+    {
+        std::string h("\x02\x00", 2), b("AAAABBBB");
+        const uint32_t keys[2] = { 1, 2 }, offs[2] = { 0, 8 };
+        for (int i = 0; i < 2; ++i)
+        {
+            h.append(reinterpret_cast<const char*>(&keys[i]), 4);
+            h.append(reinterpret_cast<const char*>(&offs[i]), 4);
+        }
+        bm::tablefile::Table t;
+        std::string why;
+        const bool ok = t.Parse(h, b, why);
+        Expect(ok && t.Rows() == 2 && t.RecordAt(0).size() == 8 && t.RecordAt(1).empty(),
+               "a header offset at the end of the body is an empty last record");
+        h.replace(10 + 4, 4, "\x09\x00\x00\x00", 4);
+        Expect(!t.Parse(h, b, why), "a header offset past the end of the body is refused");
+    }
     for (const char* name : bm::broomrows::kTables)
     {
         std::string h, b;
@@ -228,8 +246,10 @@ int main(int argc, char** argv)
         bm::broomchart::Aliases aliases;
         const bool ok = bm::broomchart::BuildCharts(charts, made, aliases, report, why, true);
         printf("charts: %s\n", ok ? report.c_str() : why.c_str());
-        Expect(ok && report.find("25 of 25 branches into the air cut") != std::string::npos,
+        Expect(ok && report.find("26 of 26 branches into the air cut") != std::string::npos,
                "every branch into the air is cut");
+        Expect(ok && made[0].size() > 0x30210 && memcmp(made[0].data() + 0x3020C, "\xEC\x5B\x2E\x62", 4) == 0,
+               "the body chart's entry ends in the ground idle, not the fly idle");
         Expect(ok && report.find("110 of 110 cameras the horse's") != std::string::npos,
                "every riding camera but the aim is the horse's");
         // Broomy serves the broom's own clips and blend at the broom's paths,

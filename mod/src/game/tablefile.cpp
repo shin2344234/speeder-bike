@@ -100,7 +100,10 @@ namespace bm::tablefile
             why = "a header offset runs past the end of the body";
             return false;
         }
-        offs.push_back(static_cast<uint32_t>(body.size()));
+        // The end of the body closes the last record. An offset that is already
+        // at the end is a last record with no bytes (issue 1): it needs no
+        // second copy of the end, and nothing lies past it.
+        if (offs.empty() || offs.back() < body.size()) offs.push_back(static_cast<uint32_t>(body.size()));
 
         keys_.reserve(entries.size());
         records_.reserve(entries.size());
@@ -109,7 +112,10 @@ namespace bm::tablefile
         for (size_t row = 0; row < entries.size(); ++row)
         {
             const uint32_t off = entries[row].second;
-            const uint32_t end = *std::upper_bound(offs.begin(), offs.end(), off);
+            // upper_bound is end() only for an offset at the end of the body,
+            // whose record is empty.
+            const auto next = std::upper_bound(offs.begin(), offs.end(), off);
+            const uint32_t end = next == offs.end() ? off : *next;
             keys_.push_back(entries[row].first);
             records_.emplace_back(body.data() + off, end - off);
             byOffset.push_back({ off, row });
