@@ -5,6 +5,7 @@
 
 #include "core/log.h"
 #include "game/damiane.h"
+#include "game/damianeupper.h"
 #include "game/farhook.h"
 #include "game/gamefile.h"
 #include "game/mem.h"
@@ -214,11 +215,72 @@ namespace
                     if (*at == was) *at = want;
                     else if (*at != want) ok = false;
                 }
-            InterlockedExchange(&g_swapped, on ? 1 : 0);
-            LOG(ok ? "[rider] Kliff's lower chart %s." : "[rider] Kliff's lower chart %s, but a branch held other bytes.",
-                on ? "takes his broom states (the speeder is ridden)" : "is back to its shipped targets");
+            // A branch holding the other mount's target when ours go in is
+            // Broomy's and the speeder's swaps meeting on the same words:
+            // the other mod lets go in its own detour on this same check, so
+            // ours go in on the next one. Before, the swap counted as in and
+            // those branches kept the other mount's targets (SpeederBike.log,
+            // 23 October 2026, 11:23:29).
+            static volatile LONG s_heldLines = 0;
+            if (on && !ok)
+            {
+                if (InterlockedIncrement(&s_heldLines) <= 20)
+                    LOG("[rider] Kliff's lower chart holds the other mount's targets, so the speeder's go in on the next check.");
+            }
+            else
+            {
+                InterlockedExchange(&g_swapped, on ? 1 : 0);
+                LOG(ok ? "[rider] Kliff's lower chart %s." : "[rider] Kliff's lower chart %s, but a branch held other bytes.",
+                    on ? "takes his broom states (the speeder is ridden)" : "is back to its shipped targets");
+            }
         }
         ReleaseSRWLockExclusive(&g_swapLock);
+    }
+
+    // Which mount Kliff is on. Both mounts' RideOn charts are checked every
+    // frame from their first ride to the end of the session, ridden or not
+    // (SpeederBike.log, 11:08 to 11:09, 23 October 2026), so a chart that
+    // runs says nothing. Standing still, a mount's chart sits in the ground
+    // idle F5150415, whose branches are at +0xC0B4, +0xC5FC and +0xC630 of
+    // the Wyvern's chart both are built from; getting on or moving takes it
+    // through other actions. Each time Kliff got on a mount in that log, its
+    // chart was out of the idle in the next report and the other's was not.
+    // So the mount whose chart last left its idle is the one he is on.
+    constexpr uint32_t kIdleBranches[] = { 0xC0B4, 0xC5FC, 0xC630 };
+    volatile uintptr_t g_broomBase = 0;
+    volatile uint32_t g_broomSize = 0;
+    volatile LONG g_speederMovedAt = 0, g_broomMovedAt = 0;
+    volatile LONG g_onBroomyLogged = 0;
+
+    bool Idle(uint32_t off)
+    {
+        for (uint32_t b : kIdleBranches)
+            if (off == b) return true;
+        return false;
+    }
+
+    bool OnBroomy()
+    {
+        const LONG b = g_broomMovedAt, sp = g_speederMovedAt;
+        return b && (!sp || static_cast<LONG>(b - sp) > 0);
+    }
+
+    // Notes each check of a mount's chart outside its ground idle.
+    void Track(uintptr_t pre)
+    {
+        int chart = -1;
+        uintptr_t base = 0;
+        if (In(pre, g_rideOnBase, g_rideOnSize)) chart = 0, base = g_rideOnBase;
+        else if (In(pre, g_broomBase, g_broomSize)) chart = 1, base = g_broomBase;
+        if (chart < 0) return;
+        const uint32_t off = static_cast<uint32_t>(pre - base);
+        if (Idle(off)) return;
+        InterlockedExchange(chart == 0 ? &g_speederMovedAt : &g_broomMovedAt, static_cast<LONG>(GetTickCount() | 1));
+        const LONG on = OnBroomy() ? 1 : 0;
+        if (InterlockedExchange(&g_onBroomyLogged, on) != on)
+            LOG(on ? "[rider] Broomy's chart left its idle (+0x%X) after the speeder's last did, so Kliff is on Broomy."
+                   : "[rider] the speeder's chart left its idle (+0x%X) after Broomy's last did, so Kliff is on the speeder.",
+                off);
     }
 
     uint64_t CheckDetour(uintptr_t comp, uint32_t* err, uintptr_t layer, uintptr_t a4, uintptr_t a5, uintptr_t a6,
@@ -227,6 +289,7 @@ namespace
         uintptr_t pre = 0;
         if (a8 && bm::mem::ReadPtr(a8, &pre))
         {
+            Track(pre);
             if (In(pre, g_rideOnBase, g_rideOnSize)) InterlockedExchange(&g_rideOnAt, static_cast<LONG>(GetTickCount()));
             // Either of Kliff's riding layers, so the targets are in before
             // the upper layer leaves the mount.
@@ -242,7 +305,7 @@ namespace
                         InterlockedExchange(&g_seatedAt, static_cast<LONG>(GetTickCount()));
                 }
                 const LONG at = g_rideOnAt;
-                const bool ridden = at && GetTickCount() - static_cast<DWORD>(at) < kRiddenMs;
+                const bool ridden = at && GetTickCount() - static_cast<DWORD>(at) < kRiddenMs && !OnBroomy();
                 if (ridden != (g_swapped != 0)) SetSwap(ridden);
             }
         }
@@ -314,14 +377,16 @@ namespace
 
     uint32_t Peek32(const uint8_t* data, uint32_t at) { return *reinterpret_cast<const uint32_t*>(data + at); }
 
-    // The upper chart: the shipped file or Broomy's with Damiane's nodes.
+    // The upper chart: the shipped file, or Broomy's with Damiane's nodes in
+    // the 1.0.3 layout or the 1.0.5 one.
     void SeenUpper(const uint8_t* data, uint32_t size)
     {
-        for (int damiane = 0; damiane < 2; ++damiane)
+        const bm::damiane::Chart* const layouts[] = { nullptr, &bm::damiane::kCharts[0], &bm::damiane::kUpper105 };
+        const char* const names[] = { "", ", in the chart with Damiane's nodes", ", in Broomy 1.0.5's chart with Damiane's nodes" };
+        for (int layout = 0; layout < 3; ++layout)
         {
-            const auto at = [&](uint32_t offset) {
-                return damiane ? bm::damiane::Moved(bm::damiane::kCharts[0], offset) : offset;
-            };
+            const bm::damiane::Chart* chart = layouts[layout];
+            const auto at = [&](uint32_t offset) { return chart ? bm::damiane::Moved(*chart, offset) : offset; };
             const uint32_t idle = at(kIdleRecord), donor = at(kDonorRecord);
             uint32_t targets[kUpperCount];
             bool fits = idle + kActionSize <= size && donor + kActionSize <= size &&
@@ -343,8 +408,7 @@ namespace
             g_upperBase = reinterpret_cast<uintptr_t>(data);
             g_upperSize = size;
             ReleaseSRWLockExclusive(&g_swapLock);
-            LOG("[rider] Kliff's upper chart has the speeder idle as %08X%s.", kSpeederUpper,
-                damiane ? ", in the chart with Damiane's nodes" : "");
+            LOG("[rider] Kliff's upper chart has the speeder idle as %08X%s.", kSpeederUpper, names[layout]);
             if (!g_dismountOff) LOG_ERR("[rider] the broom dismount's branch is not where it should be, so the shutdown sound waits until he is off.");
             return;
         }
@@ -358,6 +422,12 @@ namespace
     {
         const size_t n = strlen(path);
         if (n < 5 || _stricmp(path + n - 5, ".paac") != 0) return;
+        if (strstr(path, "/m0002_armadillo.paac") && GetModuleHandleW(L"Broomy.asi"))
+        {
+            g_broomSize = size;
+            g_broomBase = reinterpret_cast<uintptr_t>(data);
+            LOG("[rider] Broomy's riding chart, %s, is at %p (%u bytes).", path, data, size);
+        }
         if (!strstr(path, "ride") && !strstr(path, "riding")) return;
         if (g_log) LOG("[state] chart %s at %p (%u bytes)", path, data, size);
         if (strstr(path, "/ride_upper.paac")) return SeenUpper(data, size);
@@ -405,7 +475,7 @@ namespace bm::riderfix
     uint32_t MsSinceRidden()
     {
         const LONG at = g_rideOnAt;
-        return at ? GetTickCount() - static_cast<DWORD>(at) : 0xFFFFFFFFu;
+        return at && !OnBroomy() ? GetTickCount() - static_cast<DWORD>(at) : 0xFFFFFFFFu;
     }
 
     uint32_t MsSinceSeated()
@@ -451,4 +521,17 @@ namespace bm::riderfix
                       : "[rider] Kliff rides the speeder in his broom poses.");
         return true;
     }
+}
+
+// Broomy.asi asks for the speeder's RideOn chart here, to tell which mount
+// Kliff is on the same way OnBroomy does from this side. 1 and the chart's
+// place once it has been served, 0 before.
+extern "C" __declspec(dllexport) int SpeederBikeRideOnChart(uintptr_t* base, uint32_t* size)
+{
+    const uintptr_t b = g_rideOnBase;
+    const uint32_t n = g_rideOnSize;
+    if (!b || !n || !base || !size) return 0;
+    *base = b;
+    *size = n;
+    return 1;
 }
