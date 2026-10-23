@@ -72,7 +72,21 @@ riding layers stop checking the broom's dismounts.
 A fainted speeder is a new one when called. The game refuses to call a
 mount whose actor is down, so when its own check finds the speeder fainted,
 the plugin clears the speeder's roster entry, as loading a save does, and
-the call spawns a fresh speeder.
+the call spawns a fresh speeder. The groggy refusal ("Cannot summon when
+unconscious") comes from a test the dead-bytes check never sees, so a hook on
+the call at +0x7FD117, inside the game's own locked groggy test, reads the
+game's answer. When it says groggy for the speeder the lookup just found, the
+entry is cleared, the game still refuses that press, and the next press
+brings a fresh speeder. The client also keeps its own record of the mount
+that was out, so the next lookup of a cleared actor within five minutes lets
+the result go the way the dead path does.
+
+A first call lands on the ground. The speeder runs the Wyvern's body chart,
+whose entry 866C7489 starts an arrival off the ground in the fly idle
+A9D16F76, which only loops on itself. A ground patch points that branch at
+the ground idle 622E5BEC, the same edit Broomy 1.0.5 ships. A call that
+finds the speeder already out is sent to the server twice, which is what a
+second summon did by hand.
 
 ## Beside Broomy
 
@@ -83,6 +97,16 @@ and puts its own hook on top of Broomy's, so both run. Broomy installs some
 hooks a few seconds after start, so Speeder Bike waits for those before
 adding its own. The tables, the package list and the charts it builds start
 from Broomy's, which already hold Broomy's rows.
+
+Broomy 1.0.5 rebuilt `ride_upper.paac` for the escort actions, and the
+speeder's engine and poses find their idle in that chart too.
+`mod/src/game/damianeupper.h` carries 1.0.5's splice offsets and both layouts
+are tried. With Broomy out as well, the speeder's riding chart keeps running
+after Kliff gets off, so the engine and poses followed him onto Broomy. The
+mount whose chart last left its ground idle is the one he is on, so the
+engine and the speeder's poses stay off while Broomy's chart did.
+`SpeederBikeRideOnChart` tells Broomy.asi where the speeder's chart is, and a
+swap that finds Broomy's targets in place waits for the next check.
 
 Broomy serves the broom's clips, Kliff's broom clips and his broom lean
 blend at the broom's paths. The speeder names none of them: its charts play

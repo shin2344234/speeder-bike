@@ -1,4 +1,4 @@
-# Speeder Bike 1.0.3
+# Speeder Bike 1.0.4
 
 For Crimson Desert 2.03.02, exe 1.0.0.2976.
 
@@ -31,8 +31,9 @@ blue speeder marks it on the map and the minimap.
 ## Riding
 
 Mount from either side. The engine starts as Kliff gets on and shuts down as
-he gets off. If he is thrown off, it shuts down 2 seconds later. It idles at rest, climbs in pitch as you speed up, and a soft
-whine joins it at full speed. The jump key does nothing, since the speeder
+he gets off. If he is thrown off, it shuts down 2 seconds later. It idles at
+rest, climbs in pitch as you speed up, and a soft whine joins it at full
+speed. The jump key does nothing, since the speeder
 never leaves the ground.
 
 On a controller the speed follows how far the left stick is pushed. The
@@ -41,7 +42,9 @@ keyboard always moves at full speed.
 The camera sits as close behind as it does on a horse. The back button or
 the mouse wheel moves it out.
 
-If the speeder faints, calling it brings a new one right away.
+The first call puts the speeder on the ground. If it faints, the call that
+meets the refusal ("Cannot summon when unconscious") clears the old one, and
+the next call brings a new speeder.
 
 ## Settings
 
@@ -61,9 +64,11 @@ with a label and range for each.
 ## With Broomy
 
 Both plugins can be installed together, and each mount gets its own entry
-in the saddle wedge. Broomy needs to be 1.0.3 or newer, the version this was
-checked against. Kliff keeps his speeder pose on the speeder and his broom
-pose on Broomy.
+in the saddle wedge. Broomy needs to be 1.0.3 or newer, and the engine works
+with Broomy 1.0.5, the version this was checked against. Kliff keeps his
+speeder pose on the speeder and his broom pose on Broomy. With both installed,
+the engine and the speeder's poses follow the mount he is on, so the engine
+stays quiet on Broomy.
 
 ## Uninstalling
 
