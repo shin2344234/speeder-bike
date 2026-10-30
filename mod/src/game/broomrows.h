@@ -47,9 +47,18 @@ namespace bm::broomrows
     inline constexpr const char* kMapRegistry = "ui/xml/texture/cd_icon_map_03.xml";
     // The map's markup and styles, by the end of their path: the speeder's
     // map icon is a component of each markup file and a class of each style
-    // sheet. Markup first.
-    inline constexpr const char* kMapIconFiles[] = { "/minimapicon.thtml", "/worldmapicon.thtml", "/minimapicon.css",
-                                                     "/worldmapicon.css" };
+    // sheet. Markup first, then the styles, then the markup as 3392 compiles
+    // it, which is what the map builds its icons from (the Broomy session's
+    // probe, 29 October: a new .thtml component drew nothing).
+    inline constexpr const char* kMapIconFiles[] = { "/minimapicon.thtml",
+                                                     "/worldmapicon.thtml",
+                                                     "/minimapicon.css",
+                                                     "/worldmapicon.css",
+                                                     "/minimapicon_game.uibinary",
+                                                     "/minimapicon_component_game.uibinary",
+                                                     "/worldmapicon_game.uibinary",
+                                                     "/worldmapicon_component_game.uibinary" };
+    inline constexpr int kMapBinaryFirst = 4;
     // Each language's character names; the game reads one.
     inline constexpr const char* kPalocLeaf = "/character.paloc";
     // Whether Broomy's row names its own charts (GoldStar's, served as the
@@ -82,6 +91,10 @@ namespace bm::broomrows
     // map style sheet with its classes, copies of the hired ibex's drawn
     // with the speeder's silhouette.
     bool BuildMapIcons(bool markup, const std::string& game, std::string& out, std::string& why);
+    // A compiled map markup file (ui/bin__/*.uibinary, new on 3392) with the
+    // speeder's component: the hired ibex's record copied after it with its
+    // AlpineIbex strings renamed, and the component count raised by one.
+    bool BuildMapBinary(const std::string& game, std::string& out, std::string& why);
     // The broom's description from the Wyvern's.
     bool BuildDescription(const std::string& wyvern, std::string& out, std::string& why);
     // The speeder's appearance file.

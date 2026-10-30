@@ -236,11 +236,11 @@ namespace
     }
 
     // The grant hires on the server's own thread, from the handler of the
-    // client's movement request (0x0B0C), which the server runs about 37
+    // client's movement request (0x0B24), which the server runs about 37
     // times a second on the thread that also runs the mount call. It calls
-    // the server's hire as the hire request's own handler (+0x2A2F160) does:
+    // the server's hire as the hire request's own handler (+0x2CACA50) does:
     // (the sender's clan component, u32* error, u32* actor id, 0, 0), and
-    // HireDetour does the rest. Sending the hire request (0x0B8F) instead
+    // HireDetour does the rest. Sending the hire request (kReq_HireToTarget) instead
     // worked only for a horse beside the player: the server dropped the
     // request for any other before its handler ran (2 October, after a
     // save was loaded from inside the game).
@@ -331,12 +331,12 @@ namespace
                         uintptr_t a6, uintptr_t a7)
     {
         uint16_t id = 0;
-        if (message && bm::mem::Read16(message, &id) && (id == 0x0AC1 || id == 0x0876))
+        if (message && bm::mem::Read16(message, &id) && (id == kReq_WedgeChoice || id == kReq_MountCall))
         {
             uint32_t slot = 0;
-            if (id == 0x0AC1) bm::mem::Read32(message + 5, &slot);
+            if (id == kReq_WedgeChoice) bm::mem::Read32(message + 5, &slot);
             LOG("[wedge] request 0x%04X sent (%s, slot %u).", id,
-                id == 0x0AC1 ? "a wedge was chosen" : "the mount is called", slot);
+                id == kReq_WedgeChoice ? "a wedge was chosen" : "the mount is called", slot);
             LogSpeederEntry();
             // A speeder already out: the game's first call tells it to come by
             // itself, which a ground bike that arrived in the air cannot, and
@@ -348,7 +348,7 @@ namespace
             const LONG out = g_outAtCall;
             const LONG age = static_cast<LONG>(GetTickCount() - static_cast<DWORD>(out));
             const size_t bytes = static_cast<size_t>(length & 0xFFFF);
-            if (id == 0x0876 && out && age < static_cast<LONG>(kOutAtCallMs) &&
+            if (id == kReq_MountCall && out && age < static_cast<LONG>(kOutAtCallMs) &&
                 InterlockedCompareExchange(&g_outAtCall, 0, out) == out && bytes <= sizeof g_callCopy &&
                 bm::mem::ReadBytes(message, g_callCopy, bytes))
             {
@@ -493,8 +493,8 @@ namespace
     // and the server roster entry's actor id is cleared (StoreBroomy), so
     // the server spawns a fresh speeder for the call. Only the dead bytes
     // count, which the game itself reads unlocked. Its groggy test
-    // (+0x1794ED0) runs under a reader lock on [[status+8]+8] that a detour
-    // here does not hold, and +0x320 reads 2 at every call of a mount that
+    // (+0x18C57E0) runs under a reader lock on [[status+8]+8] that a detour
+    // here does not hold, and +0x340 (+0x320 on 2976) reads 2 at every call of a mount that
     // is up (Broomy's logs), so calling it would race on every call; a wrong
     // "groggy" would clear the roster entry of a speeder still out and the
     // call would bring a second one (review, 21 October). A groggy speeder is
@@ -531,13 +531,13 @@ namespace
             *reinterpret_cast<uint8_t*>(res + kOff_Lookup_Found) = 0;
             *reinterpret_cast<uintptr_t*>(res + kOff_Lookup_Actor) = 0;
             LOG("[faint] the speeder (actor %08X) fainted at the last call and its roster entry is cleared, so this "
-                "call brings a fresh speeder (+0x272 %u, +0x273 %u, +0x320 %d).",
+                "call brings a fresh speeder (+0x292 %u, +0x293 %u, +0x340 %d).",
                 static_cast<uint32_t>(id), deadA, deadB, static_cast<int32_t>(groggy));
             return r;
         }
         if (!deadA && !deadB)
         {
-            LOG("[faint] the speeder (actor %08X) is up at the call (+0x272 %u, +0x273 %u, +0x320 %d).",
+            LOG("[faint] the speeder (actor %08X) is up at the call (+0x292 %u, +0x293 %u, +0x340 %d).",
                 static_cast<uint32_t>(id), deadA, deadB, static_cast<int32_t>(groggy));
             InterlockedExchange(&g_outAtCall, static_cast<LONG>(GetTickCount() | 1));
             InterlockedExchange64(&g_lookedStatus, static_cast<LONG64>(status));
@@ -548,7 +548,7 @@ namespace
         const bool stored = g_seenCount && StoreBroomy(g_seen[0].clan, static_cast<uint32_t>(id));
         if (!stored)
         {
-            LOG_ERR("[faint] the speeder (actor %08X) is down at the call (+0x272 %u, +0x273 %u, +0x320 %d), but its "
+            LOG_ERR("[faint] the speeder (actor %08X) is down at the call (+0x292 %u, +0x293 %u, +0x340 %d), but its "
                     "roster entry was not found to clear, so the game refuses the call.",
                     static_cast<uint32_t>(id), deadA, deadB, static_cast<int32_t>(groggy));
             return r;
@@ -557,7 +557,7 @@ namespace
         // The result is the check's own stack object.
         *reinterpret_cast<uint8_t*>(res + kOff_Lookup_Found) = 0;
         *reinterpret_cast<uintptr_t*>(res + kOff_Lookup_Actor) = 0;
-        LOG("[faint] the speeder (actor %08X) is down at the call (+0x272 %u, +0x273 %u, +0x320 %d); its roster entry "
+        LOG("[faint] the speeder (actor %08X) is down at the call (+0x292 %u, +0x293 %u, +0x340 %d); its roster entry "
             "is cleared, so the call brings a fresh one.",
             static_cast<uint32_t>(id), deadA, deadB, static_cast<int32_t>(groggy));
         return r;
@@ -568,8 +568,8 @@ namespace
     // paloc has "Cannot summon because it's fainted" and "...because it's
     // dead", which fits eErrNoCanCallFailedByGroggy and ...ByDead; the match
     // from message to error is inferred, not proven. Right after the lookup
-    // the game takes its reader lock on [[status+8]+8] and, when +0x320 is
-    // above 0, runs the groggy test (+0x1794ED0) under it. This detour sits on
+    // the game takes its reader lock on [[status+8]+8] and, when +0x340 is
+    // above 0, runs the groggy test (+0x18C57E0) under it. This detour sits on
     // that one call, so the test runs exactly as the game runs it, under the
     // game's lock, and the detour only reads the answer. When it says groggy
     // for the speeder the lookup just found, the roster entry's actor id is
@@ -599,11 +599,11 @@ namespace
         {
             InterlockedExchange(&g_clearedId, static_cast<LONG>(id));
             InterlockedExchange(&g_clearedAt, static_cast<LONG>(GetTickCount() | 1));
-            LOG("[faint] the speeder (actor %08X) is groggy at the call (+0x320 %d); its roster entry is cleared. The "
+            LOG("[faint] the speeder (actor %08X) is groggy at the call (+0x340 %d); its roster entry is cleared. The "
                 "game refuses this call, and the next one brings a fresh speeder.", id, static_cast<int32_t>(groggyValue));
         }
         else
-            LOG_ERR("[faint] the speeder (actor %08X) is groggy at the call (+0x320 %d), but its roster entry was not "
+            LOG_ERR("[faint] the speeder (actor %08X) is groggy at the call (+0x340 %d), but its roster entry was not "
                     "found to clear, so it waits as the game says.", id, static_cast<int32_t>(groggyValue));
         return groggy;
     }

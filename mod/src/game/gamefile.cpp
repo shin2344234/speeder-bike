@@ -39,8 +39,8 @@ namespace
                                  uintptr_t a6, uintptr_t a7, uintptr_t a8, uintptr_t a9, uintptr_t a10, uintptr_t a11,
                                  uintptr_t a12);
 
-    // Find (slot 3) picks the pack source for a path; exists (slot 13) asks
-    // whether one has it.
+    // Find (slot 3) picks the pack source for a path; exists (slot 14) asks
+    // whether one has it, and index-of (slot 13) which one.
     typedef uintptr_t (*FnFind)(uintptr_t loader, uintptr_t out, uintptr_t path, uintptr_t flags);
     typedef uint64_t (*FnExists)(uintptr_t loader, uintptr_t path);
 
@@ -48,6 +48,7 @@ namespace
     FnAsync          g_asyncOriginal = nullptr;
     FnFind           g_findOriginal = nullptr;
     FnExists         g_existsOriginal = nullptr;
+    FnExists         g_indexOfOriginal = nullptr;
     FnMakePath       g_makePath = nullptr;
     FnReleasePath    g_releasePath = nullptr;
     FnAlloc          g_allocSet = nullptr, g_allocClear = nullptr;
@@ -85,7 +86,7 @@ namespace
     {
         const uintptr_t slots = __readgsqword(0x58);
         const uintptr_t block = slots ? *reinterpret_cast<uintptr_t*>(slots) : 0;
-        return block && *reinterpret_cast<uint8_t*>(block + 0x1FD) != 0;
+        return block && *reinterpret_cast<uint8_t*>(block + kOff_Block_AllocFlag) != 0;
     }
 
     // The game's buffer, now holding `bytes`, in the game's own allocation.
@@ -170,8 +171,12 @@ namespace
                 }
                 else
                     ok = Replace(buffer, give, text);
-                static volatile LONG logged = 0;
-                if (InterlockedIncrement(&logged) <= 40)
+                // The map icon and portrait get a count of their own: the
+                // speeder's clips and textures use up the 40 as it is first
+                // called, before the map asks for its icon (29 October).
+                static volatile LONG logged = 0, loggedUi = 0;
+                const bool ui = _strnicmp(text, "ui/", 3) == 0;
+                if (InterlockedIncrement(ui ? &loggedUi : &logged) <= (ui ? 16 : 40))
                     LOG("[anim] Read %s (a5 %llX, a6 %llX, a7 %llX, buffer %p of %u before): the game's read gave %u bytes "
                         "(result %llX); the plugin's %zu bytes%s %s.", text, static_cast<unsigned long long>(a5),
                         static_cast<unsigned long long>(a6), static_cast<unsigned long long>(a7), before, beforeCapacity,
@@ -297,8 +302,10 @@ namespace
             if (!(supply && supply(text, &to) && !to.empty()) && !g_redirect(text, to)) return;
             g_makePath(&obj, to.c_str(), 0);
             on = true;
-            static volatile LONG logged = 0;
-            if (InterlockedIncrement(&logged) <= 24) LOG("[files] %s of %s goes to %s.", where, text, to.c_str());
+            static volatile LONG logged = 0, loggedUi = 0;
+            const bool ui = _strnicmp(text, "ui/", 3) == 0;
+            if (InterlockedIncrement(ui ? &loggedUi : &logged) <= (ui ? 16 : 24))
+                LOG("[files] %s of %s goes to %s.", where, text, to.c_str());
         }
         ~Swapped()
         {
@@ -317,6 +324,12 @@ namespace
     {
         Swapped s(path, "exists");
         return g_existsOriginal(loader, s.Path(path));
+    }
+
+    uint64_t IndexOfDetour(uintptr_t loader, uintptr_t path)
+    {
+        Swapped s(path, "index-of");
+        return g_indexOfOriginal(loader, s.Path(path));
     }
 
     uintptr_t CallTarget(uintptr_t call)
@@ -406,16 +419,21 @@ namespace bm::gamefile
         }
         const uintptr_t find = farhook::Locate(kSig_LoaderFindSource, kRva_LoaderFindSource);
         const uintptr_t exists = farhook::Locate(kSig_LoaderExists, kRva_LoaderExists);
-        char why4[96] = "not found", why5[96] = "not found";
+        const uintptr_t indexOf = farhook::Locate(kSig_LoaderIndexOf, kRva_LoaderIndexOf);
+        char why4[96] = "not found", why5[96] = "not found", why6[96] = "not found";
         const bool f = find && farhook::Chain("loader find", find, reinterpret_cast<void*>(&FindDetour),
                                                 reinterpret_cast<void**>(&g_findOriginal), why4, sizeof why4);
         const bool e = exists && farhook::Chain("loader exists", exists, reinterpret_cast<void*>(&ExistsDetour),
                                                   reinterpret_cast<void**>(&g_existsOriginal), why5, sizeof why5);
-        if (f && e)
-            LOG("[files] finds and existence checks redirected too, +0x%llX and +0x%llX.",
-                static_cast<unsigned long long>(mem::Rva(find)), static_cast<unsigned long long>(mem::Rva(exists)));
+        const bool x = indexOf && farhook::Chain("loader index-of", indexOf, reinterpret_cast<void*>(&IndexOfDetour),
+                                                   reinterpret_cast<void**>(&g_indexOfOriginal), why6, sizeof why6);
+        if (f && e && x)
+            LOG("[files] finds, existence checks and index-ofs redirected too, +0x%llX, +0x%llX and +0x%llX.",
+                static_cast<unsigned long long>(mem::Rva(find)), static_cast<unsigned long long>(mem::Rva(exists)),
+                static_cast<unsigned long long>(mem::Rva(indexOf)));
         else
-            LOG_ERR("[files] find (%s) or exists (%s) could not be hooked.", f ? "hooked" : why4, e ? "hooked" : why5);
+            LOG_ERR("[files] find (%s), exists (%s) or index-of (%s) could not be hooked.", f ? "hooked" : why4,
+                    e ? "hooked" : why5, x ? "hooked" : why6);
         return true;
     }
 

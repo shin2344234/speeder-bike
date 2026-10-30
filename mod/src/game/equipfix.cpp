@@ -11,7 +11,7 @@ namespace
 {
     constexpr const char* kSig_EquipCopy =
         "48 89 54 24 10 53 55 56 57 41 54 41 55 41 56 41 57 48 83 EC 68 4C 8B F2 48 8B E9 4C 8B 61 08";
-    constexpr unsigned kOff_Slots = 0x90;     // the component's equipment list
+    constexpr unsigned kOff_Slots = 0xA0;     // the component's equipment list (+0x90 on 2976)
     constexpr unsigned kOff_Entries = 0x08;
     constexpr unsigned kOff_Count = 0x10;
     constexpr unsigned kEntrySize = 0xD0;     // first u32 the item key

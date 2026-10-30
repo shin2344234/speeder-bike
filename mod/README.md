@@ -1,6 +1,7 @@
 # Speeder Bike 1.0.4
 
-For Crimson Desert 2.03.02, exe 1.0.0.2976.
+For Crimson Desert exe 1.0.0.3392 (the DLC update of 29 October 2026), with or
+without the DLC. Builds for exe 1.0.0.2976 do not run on it.
 
 A speeder bike in the style of Return of the Jedi, as a mount of its own in
 the saddle wedge. It rides on the ground only, with the movie's engine

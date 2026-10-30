@@ -44,7 +44,10 @@ PREFAB = "character/bin__/prefab/" + PHOENIX + ".prefab"
 PREFAB_DATA = "character/prefab/" + PHOENIX + ".prefabdata_xml"
 # The Phoenix's prefab's own eight bytes at +6 (an id, not a hash of its
 # name), which the copy of the broom's keeps, so the two prefabs stay apart.
-PHOENIX_PREFAB_ID = bytes.fromhex("bf93ba147ae46f2b")
+# Exe 1.0.0.3392 gave it a new one (bf93ba147ae46f2b on 2976) and grew the
+# prefab format (the broom's gained _collisionWorldFilterLayer, _applyScale
+# and _isFacialBlendShape), so the broom prefab handed in must be 3392's.
+PHOENIX_PREFAB_ID = bytes.fromhex("7dfa2f3575f34cce")
 # The broom's own prefab data, as it ships: a BOM and the broom's skeleton.
 PREFAB_TEXT = (b'\xef\xbb\xbf<NudePrefabData>\r\n\t<SkeletonName FileName="4_riding/cd_r0032_00_Broom/'
                b'cd_r0032_00_Broom.pab"/>\r\n</NudePrefabData>\r\n\r\n')
@@ -146,14 +149,12 @@ def prefab(broom_prefab):
 
 def shipped_file(game):
     """A file as the packs hold it, unpacked."""
-    sys.path.insert(0, os.path.join(os.environ.get("CD_ANIMATOR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "CD animator")), "cd_animator"))
-    from formats import paz
+    import gamepacks
     root = os.environ.get("CRIMSON_DESERT") or sys.exit("Set CRIMSON_DESERT to the game's folder, the one holding 0009.")
-    for group in ("0009", "0010", "0012"):
-        for e in paz.read_index(os.path.join(root, group, "0.pamt")):
-            if e.path.lower() == game.lower():
-                return paz.read(e)
-    raise FileNotFoundError(game)
+    found = gamepacks.files(root, [game])
+    if game.lower() not in found:
+        raise FileNotFoundError(game)
+    return found[game.lower()]
 
 
 def write(paths, game, data):

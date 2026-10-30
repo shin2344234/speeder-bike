@@ -63,6 +63,8 @@ add_library(SpeederBike SHARED
     src/game/analogspeed.cpp
     src/game/equipfix.cpp
     src/game/riderfix.cpp
+    src/game/riderfind.cpp
+    src/game/chartwalk.cpp
     src/game/aimrate.cpp
     src/game/speedersound.cpp
     src/resources.rc
@@ -123,6 +125,17 @@ add_executable(chartcheck EXCLUDE_FROM_ALL
 target_include_directories(chartcheck PRIVATE src)
 target_compile_definitions(chartcheck PRIVATE _CRT_SECURE_NO_WARNINGS)
 target_compile_options(chartcheck PRIVATE /utf-8 /W3)
+
+# The plugin's search for the words riderfix edits, against what
+# speeder/research/rider_words.py found: build.bat riderfind CHARTS.
+add_executable(riderfind EXCLUDE_FROM_ALL
+    tests/riderfind.cpp
+    src/game/riderfind.cpp
+    src/game/chartwalk.cpp
+)
+target_include_directories(riderfind PRIVATE src tests)
+target_compile_definitions(riderfind PRIVATE _CRT_SECURE_NO_WARNINGS)
+target_compile_options(riderfind PRIVATE /utf-8 /W3)
 
 # The offline check of the speeder's engine sounds: build.bat soundcheck.
 add_executable(soundcheck EXCLUDE_FROM_ALL

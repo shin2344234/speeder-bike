@@ -12,21 +12,24 @@
 
 namespace
 {
-    // The movement update (+0xAB8FC0: object, seconds, speed record out,
-    // flag out) has one caller, +0xAB96F0, which calls it at +0xAB99A7.
-    // The pattern starts at +0xAB9999; the call is 14 bytes in.
+    // The movement update (+0xBC41D0: object, seconds, speed record out,
+    // flag out) has one caller, +0xBC4930, which calls it at +0xBC4B6E.
+    // The pattern starts at +0xBC4B60; the call is 14 bytes in. The lea's
+    // base register was r13 on 2976 and is r14 on 3392.
     constexpr const char* kSig_MoveUpdateCall =
-        "4D 8D 8D 04 01 00 00 4C 8D 45 B0 48 8B CF E8 ?? ?? ?? ?? C5 7A 10 55 C4";
+        "4D 8D ?? 04 01 00 00 4C 8D 45 B0 48 8B CF E8 ?? ?? ?? ?? C5 7A 10 55 C4";
     constexpr unsigned kCallOffset = 14;
-    constexpr uintptr_t kRva_MoveUpdate = 0xAB8FC0;
+    constexpr uintptr_t kRva_MoveUpdate = 0xBC41D0;
 
     // The speed record's word 6 (+0x18) is the state's speed in m/s. The
-    // caller keeps the speed it started moving at in the object at +0x114
+    // caller keeps the speed it started moving at in the object at +0x11C
     // (-1 while stopped) and only lowers it on a timer that does not run
     // out in flight; it takes the record's speed whenever that is higher or
-    // the latch is -1.
+    // the latch is -1. 3392 put the latch and the two timers before it 8
+    // bytes on (2976: +0x10C, +0x110, +0x114; 3392 +0xBC5133 to +0xBC52C1),
+    // and its new `mov qword [rdi+114h],0` clears the two timers.
     constexpr unsigned kRecordSpeed = 0x18;
-    constexpr unsigned kLatch = 0x114;
+    constexpr unsigned kLatch = 0x11C;
     constexpr float kUnlatched = -1.0f;
 
     // XInput's own left stick dead zone, and the push that counts as full:
@@ -89,8 +92,8 @@ namespace
     }
 
     // The node header the record comes from, by the same chain the movement
-    // update walks before it fetches the record (+0xAB906F to +0xAB90A3),
-    // then the copier's [node+0x38] (+0x1F6424F).
+    // update walks before it fetches the record (+0xBC427F to +0xBC42B3),
+    // then the copier's [node+0x28] (+0x2146B9F; [node+0x38] on 2976).
     uintptr_t NodeHeader(uintptr_t self)
     {
         __try
@@ -108,7 +111,7 @@ namespace
             const uint8_t index = *reinterpret_cast<uint8_t*>(t + 0x1B);
             const uintptr_t layer = *reinterpret_cast<uintptr_t*>(layers + index * 8 + 0x88);
             const uintptr_t node = layer ? *reinterpret_cast<uintptr_t*>(layer + 0x18) : 0;
-            return node ? *reinterpret_cast<uintptr_t*>(node + 0x38) : 0;
+            return node ? *reinterpret_cast<uintptr_t*>(node + 0x28) : 0;
         }
         __except (EXCEPTION_EXECUTE_HANDLER)
         {

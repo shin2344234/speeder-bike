@@ -4,7 +4,8 @@
 // Kliff's riding pose on the speeder. His lower riding chart,
 // ride_test3_lower, enters the state with the same key as the mount's
 // current state. The speeder's charts keep the Wyvern's state keys, and from
-// those the lower chart's branch 397 (ground) and branch 400 (air) send
+// those the lower chart's default branches for ground and air (397 and 400
+// on exe 1.0.0.2976, 412 and 415 on 3392; riderfind.cpp finds them) send
 // every mount that is not a Wyvern to the big dragon's stand idle, a full
 // body crouch. While the speeder is ridden the two branches point at the
 // cut orca rider's 01B8F8D3 instead, which plays his speeder lean blend
@@ -18,7 +19,7 @@
 // idle to the cut orca rider's EFD5260B the same way, a step later than the
 // lower, so its clip is loaded first.
 //
-// Both go through the branch check (+0x232E3D0). Install(true) also logs
+// Both go through the branch check (+0x25152D0). Install(true) also logs
 // each chart layer's next action, for testing.
 namespace bm::riderfix
 {

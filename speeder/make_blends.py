@@ -30,7 +30,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.environ.get("CD_ANIMATOR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "CD animator")), "cd_animator"))
 from formats import motionblend as mc  # noqa: E402
-from formats import paz  # noqa: E402
+import gamepacks  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FILES = os.path.join(HERE, "out", "files")
@@ -51,11 +51,7 @@ FRAMES = 100
 
 def shipped(paths):
     want = {p.lower() for p in paths}
-    out = {}
-    for pamt in ("0009", "0010", "0012"):
-        for e in paz.read_index(os.path.join(GAME, pamt, "0.pamt")):
-            if e.path.lower() in want and e.path.lower() not in out:
-                out[e.path.lower()] = paz.read(e)
+    out = gamepacks.files(GAME, want)
     missing = want - set(out)
     assert not missing, missing
     return out

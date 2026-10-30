@@ -12,6 +12,13 @@
 // name's length and the digits in its localized strings, so every change
 // finds its field by the value it holds and checks what is around it, and
 // refuses when the value is not there exactly once.
+//
+// Exe 1.0.0.3392 (Steam build 26308950) changed every record this edits:
+// each now opens with its name block and then its key, where 2976 had the
+// key first (patch-dlc's catalog, master-looter.md), and characterinfo's
+// fields were put in a new order. The positions below are 3392's, checked
+// against the 2976 values of the same rows by patch-dlc's
+// work/speeder-bike/3392/tools/ciflags.py and tablerows.py.
 
 namespace bm::broomrows
 {
@@ -74,19 +81,31 @@ namespace bm::broomrows
         constexpr const char* kMapFile = "UI/texture/cd_icon_map_speeder.dds";
         constexpr uint32_t kUnset = 0xEAC5E173;        // the tables' "no string" key
 
-        // The ibex row's seven asset strings, _upperActionChartPackageGroupName
-        // to _skeletonVariationName, as they stand in its record.
-        constexpr const char* kIbexStrings[7] = {
-            "CD_R0001_Horse", nullptr, "animal_horse",
-            "character/appearance/4_riding/cd_r0002_00_alpineibex/cd_r0002_00_alpineibex_0001_00001.app_xml",
-            nullptr, "character/model/4_riding/cd_r0002_00_fourfeet/cd_r0002_00_horse/cd_r0002_00_horse.pab",
-            "character/binary/skeletonvariation/4_riding/cd_r0002_00_fourfeet/cd_r0002_00_alpineibex/"
-            "cd_r0002_00_alpineibex_0001.pabc" };
+        // The ibex row's twelve string keys from _lowerActionChartPackageGroupName
+        // to _appearanceName, in their 3392 order: lower, upper, tribe and
+        // gender, skeleton variation, faction, prefab, socket file, skeleton,
+        // level icon, projectiles, gameplay data, appearance. A null is the
+        // unset key; a field with `check` false is neither checked nor
+        // changed. 3392 also renamed the ibex's skeleton folders
+        // (cd_r0002_00_fourfeet is r0002_00_fourfeet).
+        struct Asset { const char* ibex; bool check; };
+        constexpr int kAssetCount = 12;
+        constexpr Asset kIbexStrings[kAssetCount] = {
+            { nullptr, true }, { "CD_R0001_Horse", true }, { nullptr, false },
+            { "character/binary/skeletonvariation/4_riding/r0002_00_fourfeet/r0002_00_alpineibex/"
+              "r0002_00_alpineibex_0001.pabc", true },
+            { nullptr, false }, { nullptr, true }, { nullptr, true },
+            { "character/model/4_riding/r0002_00_fourfeet/r0002_00_horse/r0002_00_horse.pab", true },
+            { nullptr, true }, { nullptr, true }, { "animal_horse", true },
+            { "character/appearance/4_riding/cd_r0002_00_alpineibex/cd_r0002_00_alpineibex_0001_00001.app_xml", true } };
+        constexpr int kUpperString = 1, kAppearanceString = 11;
         constexpr const char* kIbexPortrait = "cd_portraitimage_Riding_AlpineIbex_1";
-        // Of the 40 one-byte flags _isCatchable to _isDisplayLevelForUI,
-        // which end 4 bytes before _uiPortraitPath, _isHirable is the 15th.
-        constexpr int kFlagsBeforePortrait = 44;
-        constexpr int kHirableIndex = 14;
+        // Fixed positions in a 3392 characterinfo record, counted from the
+        // end of its key: _isHirable, the 11th of the one-byte flags that
+        // start there; _vehicleInfo, a u16; _mercenaryInfo, a u8. Everything
+        // from the key to past _mercenaryInfo is fixed in size (the memo,
+        // a text on 2976, is now a string key).
+        constexpr size_t kHirableAt = 10, kVehicleAt = 0xCF, kMercAt = 0xD7;
         constexpr uint32_t kNameSub = 0x30, kHireSub = 0x32;
 
         uint32_t Key(const char* text) { return bm::hash::Little(text); }
@@ -155,7 +174,8 @@ namespace bm::broomrows
                 const size_t len = strlen(text);
                 if (const std::string* rec = t.Record(key))
                 {
-                    // key u32, four zero bytes, a flag byte, u32 length, text
+                    // four zero bytes, key u32, a flag byte, u32 length, text
+                    // (2976 had the key first)
                     if (Peek<uint32_t>(*rec, 9) != len || rec->compare(13, len, text) != 0)
                     {
                         why = std::string("stringinfo's key for \"") + text + "\" holds another string";
@@ -163,7 +183,7 @@ namespace bm::broomrows
                     }
                     continue;
                 }
-                const std::string rec = Bytes<uint32_t>(key) + Bytes<uint32_t>(0) + std::string(1, '\0') +
+                const std::string rec = Bytes<uint32_t>(0) + Bytes<uint32_t>(key) + std::string(1, '\0') +
                                         Bytes<uint32_t>(static_cast<uint32_t>(len)) + text;
                 if (!t.Append(key, rec))
                 {
@@ -178,16 +198,25 @@ namespace bm::broomrows
             return true;
         }
 
+        // Where a characterinfo record's key ends: the name block, then the
+        // u32 key, which must be the row's. npos when the record is not
+        // that shape.
+        size_t AfterKey(const std::string& rec, uint64_t key)
+        {
+            const uint32_t n = Peek<uint32_t>(rec, 0);
+            if (rec.size() < 8 || n > rec.size() - 8 || Peek<uint32_t>(rec, 4 + n) != key) return std::string::npos;
+            return 8 + n;
+        }
+
         void MercenaryInfoByRow(const tablefile::Table& t, std::vector<int16_t>& out)
         {
             out.assign(t.Rows(), -1);
             for (size_t row = 0; row < t.Rows(); ++row)
             {
                 const std::string& rec = t.RecordAt(row);
-                const std::string hire = Localized(static_cast<uint32_t>(t.KeyAt(row).key), kHireSub);
-                const size_t at = rec.find(hire);
-                if (at != std::string::npos && at > 0 && rec.find(hire, at + 1) == std::string::npos)
-                    out[row] = static_cast<uint8_t>(rec[at - 1]);
+                const size_t base = AfterKey(rec, t.KeyAt(row).key);
+                if (base != std::string::npos && base + kMercAt < rec.size())
+                    out[row] = static_cast<uint8_t>(rec[base + kMercAt]);
             }
         }
 
@@ -201,13 +230,14 @@ namespace bm::broomrows
             }
             std::string rec = *src;
             const std::string oldName = NameBlock("Riding_AlpineIbex_1");
-            if (rec.compare(4, oldName.size(), oldName) != 0)
+            if (rec.compare(0, oldName.size(), oldName) != 0 || AfterKey(rec, kIbexKey) != oldName.size() + 4)
             {
                 why = "characterinfo 29448 is not Riding_AlpineIbex_1";
                 return false;
             }
-            Poke<uint32_t>(rec, 0, kBroomyKey);
-            rec.replace(4, oldName.size(), NameBlock(kBroomyName));
+            rec.replace(0, oldName.size(), NameBlock(kBroomyName));
+            const size_t base = AfterKey(rec, kIbexKey);
+            Poke<uint32_t>(rec, base - 4, kBroomyKey);
 
             // Its localized strings carry the character key twice, raw and
             // as the decimal digits of (key << 32) | sub.
@@ -238,80 +268,77 @@ namespace bm::broomrows
                 return false;
             }
 
-            // The seven asset strings, in one run.
-            std::string oldRun, newRun;
-            for (const char* s : kIbexStrings) oldRun += Bytes<uint32_t>(s ? Key(s) : kUnset);
-            const uint32_t ours[7] = { Key(ChartUpper()), Key(ChartLower()), Key(kGameplay), Key(kAppearancePath), kUnset,
-                                       Key(kSkeleton), kUnset };
-            for (uint32_t k : ours) newRun += Bytes<uint32_t>(k);
-            if (!Splice(rec, oldRun, newRun, "the ibex's asset strings", why)) return false;
-
-            // _vehicleInfo, a u16 key just before _callMercenaryCoolTime (300).
+            // The twelve asset strings, found by the upper chart's key.
             size_t at;
-            if (!Once(rec, Bytes<uint16_t>(kIbexVehicle) + Bytes<uint16_t>(300), "the ibex's vehicle key", at, why))
+            if (!Once(rec, Bytes<uint32_t>(Key(kIbexStrings[kUpperString].ibex)), "the ibex's upper chart", at, why))
                 return false;
-            Poke<uint16_t>(rec, at, kVehicleKey);
+            const size_t run = at - 4 * kUpperString;
+            if (at < 4 * kUpperString || run + 4 * kAssetCount > rec.size())
+            {
+                why = "the ibex's asset strings do not fit the record";
+                return false;
+            }
+            const char* ours[kAssetCount] = { ChartLower(), ChartUpper(), nullptr, nullptr, nullptr, nullptr, nullptr,
+                                              kSkeleton, nullptr, nullptr, kGameplay, kAppearancePath };
+            for (int i = 0; i < kAssetCount; ++i)
+            {
+                const Asset& a = kIbexStrings[i];
+                if (!a.check) continue;
+                if (Peek<uint32_t>(rec, run + 4 * i) != (a.ibex ? Key(a.ibex) : kUnset))
+                {
+                    why = "the ibex's asset strings are not the ones it shipped with";
+                    return false;
+                }
+                Poke<uint32_t>(rec, run + 4 * i, ours[i] ? Key(ours[i]) : kUnset);
+            }
+
+            // _vehicleInfo and _mercenaryInfo, at their fixed places.
+            if (base + kMercAt >= rec.size() || Peek<uint16_t>(rec, base + kVehicleAt) != kIbexVehicle ||
+                static_cast<uint8_t>(rec[base + kMercAt]) != kSpecialMerc)
+            {
+                why = "the ibex row's vehicle or mercenary list is not where 3392 puts it";
+                return false;
+            }
+            Poke<uint16_t>(rec, base + kVehicleAt, kVehicleKey);
+            rec[base + kMercAt] = static_cast<char>(kMercKey);
             // _callMercenaryCoolTime, u64 seconds. Under _mercenaryCoolTimeType
             // 1 it is how long a fainted mount cannot be called ("Cannot summon
             // because it's fainted"). One second rather than 0 keeps the timer,
             // and the HP refill at its end, running as for the ibex.
-            if (Peek<uint64_t>(rec, at + 2) != 300)
-            {
-                why = "the ibex's call cooldown is not 300";
-                return false;
-            }
-            Poke<uint64_t>(rec, at + 2, kFaintSeconds);
+            if (!Once(rec, Bytes<uint64_t>(300), "the ibex's call cooldown (300)", at, why)) return false;
+            Poke<uint64_t>(rec, at, kFaintSeconds);
 
-            // _mercenaryInfo, the u8 just before the hire message's
-            // localized string.
-            if (!Once(rec, Localized(kBroomyKey, kHireSub), "the hire message", at, why)) return false;
-            if (at == 0 || static_cast<uint8_t>(rec[at - 1]) != kSpecialMerc)
-            {
-                why = "the ibex row's mercenary list is not Vehicle_Special";
-                return false;
-            }
-            rec[at - 1] = static_cast<char>(kMercKey);
-
-            // _uiPortraitPath, and _isHirable counted back from it.
+            // _uiPortraitPath.
             if (!Once(rec, Bytes<uint32_t>(Key(kIbexPortrait)), "the ibex's portrait", at, why)) return false;
             Poke<uint32_t>(rec, at, Key(kPortrait));
-            if (at < static_cast<size_t>(kFlagsBeforePortrait))
-            {
-                why = "the portrait sits too early in the record";
-                return false;
-            }
-            const size_t flags = at - kFlagsBeforePortrait;
-            for (int i = 0; i < 40; ++i)
-                if (static_cast<uint8_t>(rec[flags + i]) > 2)
-                {
-                    why = "the flag run before the portrait is not what the Wyvern's row showed";
-                    return false;
-                }
-            if (rec[flags + kHirableIndex] != 0)
+            // _isHirable.
+            if (rec[base + kHirableAt] != 0)
             {
                 why = "the ibex row is already hirable, which it was not";
                 return false;
             }
-            rec[flags + kHirableIndex] = 1;
-            // _vanishTickCount, u32 milliseconds, the 4 bytes between the flag
-            // run and _uiPortraitPath, taken to be how long a fainted body
-            // stays in the world. With the ibex's 15 minutes and the 1 second
-            // faint timer, a fainted speeder was still refused 15 s after the
-            // ride and could be called again only after a reload, which
-            // clears every body (Buxunqingmo's 1.0.1 log, 6 October). Not yet
-            // seen in play.
-            if (Peek<uint32_t>(rec, at - 4) != 900000)
-            {
-                why = "the ibex's vanish time is not 900000 ms";
-                return false;
-            }
-            Poke<uint32_t>(rec, at - 4, kVanishMs);
+            rec[base + kHirableAt] = 1;
+            // _vanishTickCount, u32 milliseconds, taken to be how long a
+            // fainted body stays in the world. With the ibex's 15 minutes and
+            // the 1 second faint timer, a fainted speeder was still refused
+            // 15 s after the ride and could be called again only after a
+            // reload, which clears every body (Buxunqingmo's 1.0.1 log, 6
+            // October). Not yet seen in play.
+            if (!Once(rec, Bytes<uint32_t>(900000), "the ibex's vanish time (900000 ms)", at, why)) return false;
+            Poke<uint32_t>(rec, at, kVanishMs);
 
-            // _interactionInfoList: the ibex's two ride interactions become
-            // Broom_Ride alone.
+            // _interactionInfoList and, on 3392, _interactionInfoListWithRecursiveChild
+            // after it, both holding the ibex's two ride interactions: each
+            // becomes Broom_Ride alone.
             const std::string ibexList = Bytes<uint32_t>(2) + Bytes<uint32_t>(kIbexRide[0]) + Bytes<uint32_t>(kIbexRide[1]);
             const std::string wyvernList = Bytes<uint32_t>(1) + Bytes<uint32_t>(kWyvernRide[0]);
-            if (!Splice(rec, ibexList, wyvernList, "the ibex's interaction list", why)) return false;
+            const size_t lists = Count(rec, ibexList);
+            if (lists < 1 || lists > 2)
+            {
+                why = "the ibex's interaction lists are not there once or twice";
+                return false;
+            }
+            for (size_t i = 0; i < lists; ++i) rec.replace(rec.find(ibexList), ibexList.size(), wyvernList);
 
             const int row = static_cast<int>(t.Rows());
             if (!t.Append(kBroomyKey, rec))
@@ -333,16 +360,18 @@ namespace bm::broomrows
 
         bool Mercenary(tablefile::Table& t, std::string& report, std::string& why)
         {
+            // The name block, then the u8 key.
             const std::string* src = t.Record(kHorseMerc);
             const std::string old = NameBlock("Vehicle_Horse");
-            if (!src || src->empty() || static_cast<uint8_t>((*src)[0]) != kHorseMerc || src->compare(1, old.size(), old) != 0)
+            if (!src || src->size() <= old.size() || src->compare(0, old.size(), old) != 0 ||
+                static_cast<uint8_t>((*src)[old.size()]) != kHorseMerc)
             {
                 why = "mercenaryinfo 78 is not Vehicle_Horse";
                 return false;
             }
             std::string rec = *src;
-            rec[0] = static_cast<char>(kMercKey);
-            rec.replace(1, old.size(), NameBlock(kMercName));
+            rec[old.size()] = static_cast<char>(kMercKey);
+            rec.replace(0, old.size(), NameBlock(kMercName));
             const int row = static_cast<int>(t.Rows());
             if (!t.Append(kMercKey, rec))
             {
@@ -387,7 +416,7 @@ namespace bm::broomrows
         {
             const std::string* src = t.Record(kVehicleSlot);
             const std::string name = NameBlock("VehicleSlot");
-            if (!src || Peek<uint32_t>(*src, 0) != kVehicleSlot || src->compare(4, name.size(), name) != 0)
+            if (!src || src->compare(0, name.size(), name) != 0 || Peek<uint32_t>(*src, name.size()) != kVehicleSlot)
             {
                 why = "reserveslot 1000006 is not VehicleSlot";
                 return false;
@@ -422,7 +451,7 @@ namespace bm::broomrows
             const std::string second = NameBlock("TempPivotKey_Broom_Ride_2");
             const size_t a = src ? src->find(first) : std::string::npos;
             const size_t b = src ? src->find(second) : std::string::npos;
-            if (!src || src->compare(4, name.size(), name) != 0 || a == std::string::npos || b == std::string::npos ||
+            if (!src || src->compare(0, name.size(), name) != 0 || a == std::string::npos || b == std::string::npos ||
                 b < a + first.size())
             {
                 why = "interactioninfo 1000068 is not Broom_Ride with its two pivots in order";
@@ -444,14 +473,14 @@ namespace bm::broomrows
         {
             const std::string* src = t.Record(kIbexVehicle);
             const std::string old = NameBlock("AlpineIbex");
-            if (!src || Peek<uint16_t>(*src, 0) != kIbexVehicle || src->compare(2, old.size(), old) != 0)
+            if (!src || src->compare(0, old.size(), old) != 0 || Peek<uint16_t>(*src, old.size()) != kIbexVehicle)
             {
                 why = "vehicleinfo 16993 is not AlpineIbex";
                 return false;
             }
             std::string rec = *src;
-            Poke<uint16_t>(rec, 0, kVehicleKey);
-            rec.replace(2, old.size(), NameBlock(kVehicleName));
+            Poke<uint16_t>(rec, old.size(), kVehicleKey);
+            rec.replace(0, old.size(), NameBlock(kVehicleName));
             // _uiMapTextureInfo, a u32 key: the speeder's map row, not the ibex's.
             if (!Splice(rec, Bytes<uint32_t>(kIbexMapTexture), Bytes<uint32_t>(kBroomyKey), "the ibex's map icon", why))
                 return false;
@@ -464,19 +493,19 @@ namespace bm::broomrows
             return true;
         }
 
-        // key, tag, 0, u8 0, "0_Base", appearance string key at +0x11, f32
-        // scale at +0x15, key at +0x19.
+        // u32 0, key, tag, u8 0, appearance string key at +0x11, f32 scale
+        // at +0x15, key at +0x19 (2976: key, tag, then the u32 0).
         bool AppearanceIndex(tablefile::Table& t, std::string& report, std::string& why)
         {
             const std::string* src = t.Record(kIbexKey, -2);
-            if (!src || src->size() != 29 || Peek<uint32_t>(*src, 0) != kIbexKey || Peek<uint32_t>(*src, 25) != kIbexKey ||
-                Peek<uint32_t>(*src, 0x11) != Key(kIbexStrings[3]))
+            if (!src || src->size() != 29 || Peek<uint32_t>(*src, 0) != 0 || Peek<uint32_t>(*src, 4) != kIbexKey ||
+                Peek<uint32_t>(*src, 25) != kIbexKey || Peek<uint32_t>(*src, 0x11) != Key(kIbexStrings[kAppearanceString].ibex))
             {
                 why = "the ibex's appearance index row is not the 29-byte shape naming its appearance";
                 return false;
             }
             std::string rec = *src;
-            Poke<uint32_t>(rec, 0, kBroomyKey);
+            Poke<uint32_t>(rec, 4, kBroomyKey);
             Poke<uint32_t>(rec, 0x11, Key(kAppearancePath));
             Poke<float>(rec, 0x15, 1.0f);
             Poke<uint32_t>(rec, 25, kBroomyKey);
@@ -489,21 +518,21 @@ namespace bm::broomrows
             return true;
         }
 
-        // u32 key, the name, the component's stringinfo key, then two
+        // The name, u32 key, the component's stringinfo key, then two
         // localized strings: u8 0x19, u32 sub (0x190, 0x191), u32 key, u32
         // length, the digits of (key << 32) | sub.
         bool MapTexture(tablefile::Table& t, std::string& report, std::string& why)
         {
             const std::string* src = t.Record(kIbexMapTexture);
             const std::string old = NameBlock(kIbexMapName);
-            if (!src || Peek<uint32_t>(*src, 0) != kIbexMapTexture || src->compare(4, old.size(), old) != 0)
+            if (!src || src->compare(0, old.size(), old) != 0 || Peek<uint32_t>(*src, old.size()) != kIbexMapTexture)
             {
                 why = "uimaptextureinfo 5347 is not Actor_Vehicle_AlpineIbex_Hired";
                 return false;
             }
             std::string rec = *src;
-            Poke<uint32_t>(rec, 0, kBroomyKey);
-            rec.replace(4, old.size(), NameBlock(kMapName));
+            Poke<uint32_t>(rec, old.size(), kBroomyKey);
+            rec.replace(0, old.size(), NameBlock(kMapName));
             if (!Splice(rec, Bytes<uint32_t>(Key(kIbexMapComponent)), Bytes<uint32_t>(Key(kMapComponent)),
                         "the ibex's map component", why))
                 return false;
@@ -540,17 +569,19 @@ namespace bm::broomrows
 
         // The game checks at boot that every uimaptextureinfo row is in a
         // filter group, and stops loading when one is not (Broomy, 4
-        // October). The ibex's is in Group_Invisible (1000015): u32 key, the
-        // name, u8 0, u32 1, u32 count, then entries of a u32 map key and
-        // five zero bytes. The speeder's goes in after the ibex's.
+        // October). The ibex's is in Group_Invisible (1000015): the name,
+        // u32 key, u8 0, five bytes 3392 added (02 DF 0F 93 75 in every
+        // group), u32 1, u32 count, then entries of a u32 map key and five
+        // zero bytes. The speeder's goes in after the ibex's.
         bool FilterGroup(tablefile::Table& t, std::string& report, std::string& why)
         {
             constexpr uint32_t kGroup = 1000015;
             const std::string* src = t.Record(kGroup);
             const std::string name = NameBlock("Group_Invisible");
-            const size_t countAt = 4 + name.size() + 5, list = countAt + 4;
-            if (!src || Peek<uint32_t>(*src, 0) != kGroup || src->compare(4, name.size(), name) != 0 ||
-                src->size() < list)
+            const size_t countAt = name.size() + 4 + 10, list = countAt + 4;
+            if (!src || src->size() < list || src->compare(0, name.size(), name) != 0 ||
+                Peek<uint32_t>(*src, name.size()) != kGroup || (*src)[name.size() + 4] != 0 ||
+                Peek<uint32_t>(*src, countAt - 4) != 1)
             {
                 why = "uifiltergroupinfo 1000015 is not Group_Invisible";
                 return false;
@@ -788,6 +819,144 @@ namespace bm::broomrows
             why = "it has no class drawing the ibex";
             return false;
         }
+        return true;
+    }
+
+    namespace
+    {
+        // A u32-length string of printable bytes at `p`; its text and end.
+        bool StringAt(const std::string& d, size_t p, std::string& text, size_t& end)
+        {
+            if (p + 4 > d.size()) return false;
+            const uint32_t n = Peek<uint32_t>(d, p);
+            if (n > 4096 || p + 4 + n > d.size()) return false;
+            for (size_t i = p + 4; i < p + 4 + n; ++i)
+                if (static_cast<uint8_t>(d[i]) < 0x20 || static_cast<uint8_t>(d[i]) >= 0x7F) return false;
+            text.assign(d, p + 4, n);
+            end = p + 4 + n;
+            return true;
+        }
+
+        // The end of the compiled component header at `p`: a name starting
+        // MapIcon_, its classes, its script and a byte, its attribute pairs.
+        bool HeaderEnd(const std::string& d, size_t p, size_t& end)
+        {
+            std::string s;
+            if (!StringAt(d, p, s, p) || s.compare(0, 8, "MapIcon_") != 0) return false;
+            for (int lists : { 1, 0, 2 })
+            {
+                if (lists == 0)
+                {
+                    if (!StringAt(d, p, s, p) || p + 1 > d.size()) return false;
+                    p += 1;
+                    continue;
+                }
+                if (p + 4 > d.size()) return false;
+                const uint32_t n = Peek<uint32_t>(d, p);
+                if (n > 64) return false;
+                p += 4;
+                for (uint32_t i = 0; i < n * lists; ++i)
+                    if (!StringAt(d, p, s, p)) return false;
+            }
+            end = p;
+            return true;
+        }
+    }
+
+    // The file (the Broomy session's reading, 29 October): u8 0, u32 n and n
+    // style sheet paths, u32 0, u32 component count, then the components. A
+    // component is its children first, then its own header (HeaderEnd). The
+    // styles stay text, so the speeder's served .css still draws it.
+    bool BuildMapBinary(const std::string& game, std::string& out, std::string& why)
+    {
+        // Broomy's copy, when Broomy is installed, is already in it.
+        if (game.find("Speeder") != std::string::npos)
+        {
+            why = "it already names the speeder";
+            return false;
+        }
+        size_t p = 1;
+        std::string s;
+        if (game.size() < 5)
+        {
+            why = "it is too short";
+            return false;
+        }
+        const uint32_t sheets = Peek<uint32_t>(game, p);
+        p += 4;
+        for (uint32_t i = 0; i < sheets; ++i)
+            if (sheets > 64 || !StringAt(game, p, s, p))
+            {
+                why = "its style sheet list does not read";
+                return false;
+            }
+        const size_t countAt = p + 4;
+        if (countAt + 4 > game.size() || Peek<uint32_t>(game, p) != 0)
+        {
+            why = "it has no component count where it was";
+            return false;
+        }
+        const std::string needle = Bytes<uint32_t>(static_cast<uint32_t>(strlen(kIbexMapComponent))) + kIbexMapComponent;
+        size_t nameAt;
+        if (!Once(game, needle, "the hired ibex's component", nameAt, why)) return false;
+        size_t end = 0, start = 0;
+        if (!HeaderEnd(game, nameAt, end))
+        {
+            why = "the hired ibex's component header does not read";
+            return false;
+        }
+        // Children come before a component's header, so the ibex's record
+        // starts where the header before it ends.
+        bool found = false;
+        for (size_t q = nameAt; !found && q > countAt + 4; --q)
+        {
+            size_t e;
+            if (HeaderEnd(game, q - 1, e) && e <= nameAt) start = e, found = true;
+        }
+        if (!found)
+        {
+            why = "no component comes before the hired ibex's";
+            return false;
+        }
+        const std::string rec = game.substr(start, end - start);
+        // Every string naming AlpineIbex, renamed with its length.
+        std::string ours;
+        size_t from = 0;
+        int renamed = 0;
+        for (size_t at = rec.find("AlpineIbex"); at != std::string::npos; at = rec.find("AlpineIbex", from))
+        {
+            bool inString = false;
+            size_t q = at >= 4 ? at - 4 : 0, strEnd = 0;
+            for (int back = 0; back < 256 && q >= from; ++back, --q)
+            {
+                if (StringAt(rec, q, s, strEnd) && q + 4 <= at && strEnd >= at + 10)
+                {
+                    inString = true;
+                    break;
+                }
+                if (q == 0) break;
+            }
+            if (!inString)
+            {
+                why = "the hired ibex's record names AlpineIbex outside a string";
+                return false;
+            }
+            const std::string renamedText = Replaced(s, "AlpineIbex", "Speeder");
+            ours.append(rec, from, q - from);
+            ours += Bytes<uint32_t>(static_cast<uint32_t>(renamedText.size())) + renamedText;
+            from = strEnd;
+            ++renamed;
+        }
+        ours.append(rec, from, std::string::npos);
+        if (renamed < 2)
+        {
+            why = "the hired ibex's record names AlpineIbex in fewer than two strings";
+            return false;
+        }
+        out.assign(game, 0, end);
+        out += ours;
+        out.append(game, end, std::string::npos);
+        Poke<uint32_t>(out, countAt, Peek<uint32_t>(game, countAt) + 1);
         return true;
     }
 
