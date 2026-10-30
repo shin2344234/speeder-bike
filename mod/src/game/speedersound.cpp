@@ -64,6 +64,13 @@ namespace
     // Riding that starts this long after the last ride plays the start-up;
     // a shorter gap, such as a menu, only fades the engine back in.
     constexpr ULONGLONG kRestartMs = 5000;
+    // Riding must hold this long before the engine starts. Kliff's upper
+    // chart, which says he is seated, is checked about 12 ms before the
+    // RideOn charts, so on the first frame of getting on Broomy the speeder
+    // can still read as ridden before Broomy's chart says otherwise (Seth,
+    // 30 October: the startup at 08:46:43.011 came 10 ms before Broomy's
+    // first check). Getting off stays immediate.
+    constexpr ULONGLONG kStartHoldMs = 100;
 
     std::atomic<bool> g_stop{ false };
     HANDLE g_thread = nullptr;
@@ -163,7 +170,7 @@ namespace
 
         float vol = 0.0f, mix = 0.0f, boostMix = 0.0f, pitch = kRestPitch, before = 0.0f;
         bool wasOn = false, wasBoost = false, wasRidden = false;
-        ULONGLONG last = GetTickCount64(), quietUntil = 0, riddenAt = 0, highAt = 0;
+        ULONGLONG last = GetTickCount64(), quietUntil = 0, riddenAt = 0, highAt = 0, rawAt = 0;
         while (!g_stop.load())
         {
             Sleep(33);
@@ -174,9 +181,11 @@ namespace
             // The RideOn chart runs on after Kliff gets off, so the engine
             // stops as he starts getting off and starts again as he mounts.
             const bool off = bm::riderfix::GettingOff();
-            const bool ridden = bm::riderfix::MsSinceRidden() < kRiddenMs &&
-                                bm::riderfix::MsSinceSeated() < kSeatedMs && !off,
-                       front = GameInFront();
+            const bool raw = bm::riderfix::MsSinceRidden() < kRiddenMs &&
+                             bm::riderfix::MsSinceSeated() < kSeatedMs && !off;
+            if (!raw) rawAt = 0;
+            else if (!rawAt) rawAt = now;
+            const bool ridden = raw && (wasRidden || now - rawAt >= kStartHoldMs), front = GameInFront();
             const bool on = ridden && front;
             if (ridden != wasRidden && front)
             {

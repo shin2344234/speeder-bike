@@ -215,11 +215,17 @@ namespace
     // speeder's chart was still checked, started the engine on Broomy
     // (Seth, 30 October; SpeederBike.log startup at 08:24:35.345, 20 ms after
     // Broomy's chart was first checked). The mount actions' branch to the
-    // ground idle gives the rider 082F0420 (+0x18), and on 3392 only the
-    // chart Kliff got on passed it, every frame of the mount (Broomy.06.log,
-    // +0xC3D1); a parked chart passes +0xBF39 instead. So passing a branch
-    // to the ground idle with that rider action counts as a change of state,
-    // though it is no change. Broomy f171acd does the same.
+    // ground idle gives the rider 082F0420 (+0x18, at +0xC3D1). The game
+    // checks it on every frame of the mount, from the first, and lets it
+    // through only at the end, 2.1 s later. In 01fa274 only the pass counted,
+    // so the engine still started as Kliff got on Broomy and stopped 2.1 s
+    // later (SpeederBike.log, 30 October, startup 08:46:23.338, Broomy's pass
+    // 08:46:25.441), and on the speeder itself it started 2.1 s late. So a
+    // check of that branch, let through or not, says Kliff is getting on that
+    // mount. On 3392 only the chart Kliff got on checked it, each frame from
+    // 20:09:20.605 to 20:09:22.715, the 2.1 s of the mount; the parked chart
+    // checked +0xBF39 and nothing else (SpeederBike.07.log). Broomy f4bfda6
+    // does the same.
     volatile uintptr_t g_broomBase = 0;
     volatile uint32_t g_broomSize = 0;
     volatile LONG g_speederMovedAt = 0, g_broomMovedAt = 0;
@@ -235,31 +241,62 @@ namespace
         return b && (!sp || static_cast<LONG>(b - sp) > 0);
     }
 
-    // Notes each branch a mount's chart takes into another state.
-    void Track(uintptr_t pre)
+    // Which mount's chart a branch record is in: 0 the speeder's, 1 Broomy's,
+    // -1 neither.
+    int ChartOf(uintptr_t pre, uintptr_t* base)
     {
-        int chart = -1;
-        uintptr_t base = 0;
-        if (In(pre, g_rideOnBase, g_rideOnSize)) chart = 0, base = g_rideOnBase;
-        else if (In(pre, g_broomBase, g_broomSize)) chart = 1, base = g_broomBase;
-        if (chart < 0) return;
-        uint32_t target = 0, rider = 0;
-        if (!bm::mem::Read32(pre + 0x14, &target) || !target) return;
-        const bool mounted = target == kGroundIdle && bm::mem::Read32(pre + 0x18, &rider) && rider == kMountedRider;
-        if (static_cast<uint32_t>(InterlockedExchange(&g_state[chart], static_cast<LONG>(target))) == target &&
-            !mounted)
-            return;
-        // Settling into the ground idle is what a mount left alone does, so
-        // it says nothing about the rider. Getting on ends there too.
-        if (target == kGroundIdle && !mounted) return;
+        if (In(pre, g_rideOnBase, g_rideOnSize))
+        {
+            *base = g_rideOnBase;
+            return 0;
+        }
+        if (In(pre, g_broomBase, g_broomSize))
+        {
+            *base = g_broomBase;
+            return 1;
+        }
+        return -1;
+    }
+
+    void Moved(int chart, uint32_t target, uint32_t off, bool gettingOn)
+    {
         InterlockedExchange(chart == 0 ? &g_speederMovedAt : &g_broomMovedAt, static_cast<LONG>(GetTickCount() | 1));
         const LONG on = OnBroomy() ? 1 : 0;
         if (InterlockedExchange(&g_onBroomyLogged, on) != on)
-            LOG(on ? "[rider] Broomy's chart went to %08X (+0x%X%s) after the speeder's last changed state, so Kliff is "
-                     "on Broomy."
-                   : "[rider] the speeder's chart went to %08X (+0x%X%s) after Broomy's last changed state, so Kliff is "
-                     "on the speeder.",
-                target, static_cast<uint32_t>(pre - base), mounted ? ", getting on" : "");
+            LOG(on ? "[rider] Broomy's chart %s %08X (+0x%X) after the speeder's last changed state, so Kliff is on "
+                     "Broomy."
+                   : "[rider] the speeder's chart %s %08X (+0x%X) after Broomy's last changed state, so Kliff is on "
+                     "the speeder.",
+                gettingOn ? "checked the getting-on branch to" : "went to", target, off);
+    }
+
+    // Notes each check of the mount actions' branch, let through or not.
+    void GettingOn(uintptr_t pre)
+    {
+        uintptr_t base = 0;
+        const int chart = ChartOf(pre, &base);
+        if (chart < 0) return;
+        uint32_t target = 0, rider = 0;
+        if (!bm::mem::Read32(pre + 0x14, &target) || target != kGroundIdle || !bm::mem::Read32(pre + 0x18, &rider) ||
+            rider != kMountedRider)
+            return;
+        Moved(chart, target, static_cast<uint32_t>(pre - base), true);
+    }
+
+    // Notes each branch a mount's chart takes into another state.
+    void Track(uintptr_t pre)
+    {
+        uintptr_t base = 0;
+        const int chart = ChartOf(pre, &base);
+        if (chart < 0) return;
+        uint32_t target = 0;
+        if (!bm::mem::Read32(pre + 0x14, &target) || !target) return;
+        if (static_cast<uint32_t>(InterlockedExchange(&g_state[chart], static_cast<LONG>(target))) == target) return;
+        // Settling into the ground idle is what a mount left alone does, so
+        // it says nothing about the rider. Getting on ends there too, and
+        // GettingOn has counted it from its first frame.
+        if (target == kGroundIdle) return;
+        Moved(chart, target, static_cast<uint32_t>(pre - base), false);
     }
 
     uint64_t CheckDetour(uintptr_t comp, uint32_t* err, uintptr_t layer, uintptr_t a4, uintptr_t a5, uintptr_t a6,
@@ -269,6 +306,7 @@ namespace
         const bool known = a8 && bm::mem::ReadPtr(a8, &pre);
         if (known)
         {
+            GettingOn(pre);
             if (In(pre, g_rideOnBase, g_rideOnSize)) InterlockedExchange(&g_rideOnAt, static_cast<LONG>(GetTickCount()));
             // Either of Kliff's riding layers, so the targets are in before
             // the upper layer leaves the mount.
