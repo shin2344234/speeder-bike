@@ -27,7 +27,9 @@ edit. The game reads its own files and the plugin hands it changed copies:
 - A portrait for the saddle wedge and a map icon, both rendered from the
   model in Blender by `speeder/make_icons.py`. The map icon is a copy of the
   hired ibex's, drawn with the speeder's own silhouette, which the map's
-  texture list gains.
+  texture list gains. On this exe the map builds its icons from compiled
+  layout files, `ui/bin__/*mapicon*_game.uibinary`, so the plugin copies the
+  hired ibex's component in those too, renamed for the speeder.
 - Charts made from the Wyvern's riding charts, served under the cut boat's
   chart packages, with every branch into a flying state cut, so the speeder
   never takes off. Every animation path names a clip of the speeder's own,
@@ -98,13 +100,18 @@ hooks a few seconds after start, so Speeder Bike waits for those before
 adding its own. The tables, the package list and the charts it builds start
 from Broomy's, which already hold Broomy's rows.
 
-Broomy 1.0.5 rebuilt `ride_upper.paac` for the escort actions, and the
-speeder's engine and poses find their idle in that chart too.
-`mod/src/game/damianeupper.h` carries 1.0.5's splice offsets and both layouts
-are tried. With Broomy out as well, the speeder's riding chart keeps running
-after Kliff gets off, so the engine and poses followed him onto Broomy. The
-mount whose chart last left its ground idle is the one he is on, so the
-engine and the speeder's poses stay off while Broomy's chart did.
+Broomy rebuilds Kliff's `ride_upper.paac` and edits his charts as they
+load, so offsets taken from the shipped chart would miss. `riderfind.cpp`
+finds each word `riderfix.cpp` changes by what it is, an action's key or the
+branch it loops on, as each chart loads. The same code works on the shipped
+chart and on Broomy's, and `speeder/research/rider_words.py` does the same
+search offline for `mod\build.bat riderfind`.
+
+With Broomy out as well, both riding charts keep running after Kliff gets
+off. Each mount's chart notes its last real state change, and the mount
+whose chart changed last is the one he is on, so the engine and the
+speeder's poses stay off on Broomy. A parked speeder's chart checks its way
+back to its idle every frame, and those checks do not count.
 `SpeederBikeRideOnChart` tells Broomy.asi where the speeder's chart is, and a
 swap that finds Broomy's targets in place waits for the next check.
 
@@ -125,10 +132,11 @@ MSVC Build Tools 2022, with the CMake and Ninja they bundle.
 The plugin lands in `mod\dist\SpeederBike.asi`. It needs Ultimate ASI Loader
 in the game's `bin64`.
 
-Three offline checks run without the game:
+Four offline checks run without the game:
 
     mod\build.bat stackcheck IN     the tables, package list and charts, alone and on Broomy's
     mod\build.bat chartcheck IN OUT the charts, written out with their aliases
+    mod\build.bat riderfind CHARTS  the search for Kliff's chart words, against rider_words.py
     mod\build.bat soundcheck        a fake ride through the engine sounds
 
 `stackcheck` compiles Broomy's own builders from `../Broomy/mod/src` (CMake's
