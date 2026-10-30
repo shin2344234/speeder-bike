@@ -5,9 +5,10 @@
 #include "game/damianepatches.h"
 #include "game/tablefile.h"
 
-// A copy of Broomy 1.0.3's damiane.h and damianepatches.h. The speeder only
-// needs Moved: with Broomy installed, Kliff's lower chart is the one Broomy
-// serves with these splices, and riderfix finds its words there.
+// A copy of Broomy's damiane.h and damianepatches.h (Broomy 7e2bb3c, exe
+// 1.0.0.3424). The plugin includes neither: riderfind.cpp finds Kliff's words
+// in Broomy's spliced charts by what they are, and `build.bat riderfind
+// CHARTS SPLICED` checks that on charts these splices build.
 //
 // Damiane on Broomy. Kliff, Damiane and Oongka ride with Kliff's two riding
 // charts, and each broom action in them has only his node, so Damiane played
