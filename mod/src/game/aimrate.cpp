@@ -11,24 +11,25 @@
 
 namespace
 {
-    // In the AimIK apply (+0x12DC4E0 on 3424, 0x10F0 above 3392's
-    // +0x12DB3F0, the same code), with rdi the modifier, xmm7 the target
-    // distance and xmm8 the smoothing rate (the event's, read from [rdi+0x84]
-    // and reset there to -1 at once, or 10 when it holds nothing):
-    //   +0x12DC839  vxorps  xmm1, xmm1, xmm1
-    //   +0x12DC83D  vcomiss xmm7, xmm1
-    //   +0x12DC841  jbe     +0x12DC883        ; no distance: rate stays as it is
-    //   +0x12DC843  vcomiss xmm8, xmm10       ; ... rate += min(|lag|, 8) / 8 * (4 - rate)
-    //   +0x12DC883  mov     r9, rbp           ; the solve, which smooths at rate xmm8
+    // In the AimIK apply (+0x12DCF70 on 3446, 0xA90 above 3424's
+    // +0x12DC4E0 and 0x1B80 above 3392's +0x12DB3F0, the same code), with
+    // rdi the modifier, xmm7 the target distance and xmm8 the smoothing rate
+    // (the event's, read from [rdi+0x84] and reset there to -1 at once, or 10
+    // when it holds nothing):
+    //   +0x12DD2C9  vxorps  xmm1, xmm1, xmm1
+    //   +0x12DD2CD  vcomiss xmm7, xmm1
+    //   +0x12DD2D1  jbe     +0x12DD313        ; no distance: rate stays as it is
+    //   +0x12DD2D3  vcomiss xmm8, xmm10       ; ... rate += min(|lag|, 8) / 8 * (4 - rate)
+    //   +0x12DD313  mov     r9, rbp           ; the solve, which smooths at rate xmm8
     // On 2976 the same ran at +0x111A0C5 with xmm9 and r14. [rdi+0x60] is
-    // the hash of the aim's reference bone (looked up at +0x12DC551). For the broom it is B_Body_00, which ikpatches.h puts in
+    // the hash of the aim's reference bone (looked up at +0x12DCFE1). For the broom it is B_Body_00, which ikpatches.h puts in
     // the RideOn and body charts in place of the Wyvern's B_IK_Head_00. The
     // game used one of the two spellings' hashes, so both are checked. The
     // broom's aim gets kRate on every frame and skips the pull; every other
     // aim IK runs the shipped instructions.
-    constexpr uintptr_t kRva_Site = 0x12DC839;
-    constexpr uintptr_t kRva_Pull = 0x12DC843;
-    constexpr uintptr_t kRva_Solve = 0x12DC883;
+    constexpr uintptr_t kRva_Site = 0x12DD2C9;
+    constexpr uintptr_t kRva_Pull = 0x12DD2D3;
+    constexpr uintptr_t kRva_Solve = 0x12DD313;
     constexpr unsigned char kSite[] = { 0xC5, 0xF0, 0x57, 0xC9, 0xC5, 0xF8, 0x2F, 0xF9, 0x76, 0x40 };
     constexpr unsigned char kPullHead[] = { 0xC4, 0x41, 0x78, 0x2F, 0xC2 };
     constexpr float kRate = 1.0f;   // per second: a 90 degree swing is 90 percent done in 2.3 s

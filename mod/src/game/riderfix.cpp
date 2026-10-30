@@ -16,7 +16,7 @@ namespace
     // argument a pointer whose first field is the branch record). The error
     // is 0 when the branch may be taken. The record's target action hash is
     // at +0x14.
-    constexpr uintptr_t kRva_BranchCheck = 0x2516560;   // 0x25152D0 on 3392, 0x232E3D0 on 2976
+    constexpr uintptr_t kRva_BranchCheck = 0x2517710;   // 0x2516560 on 3424, 0x25152D0 on 3392, 0x232E3D0 on 2976
     constexpr uint8_t kBranchCheckHead[] = { 0x48, 0x8B, 0xC4, 0x48, 0x89, 0x58, 0x10, 0x4C, 0x89, 0x48, 0x20, 0x44,
                                              0x88, 0x40, 0x18, 0x48, 0x89, 0x48, 0x08 };
 
