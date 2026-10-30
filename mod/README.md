@@ -1,7 +1,8 @@
 # Speeder Bike 1.0.5
 
-For Crimson Desert exe 1.0.0.3392 (the DLC update of 29 October 2026), with or
-without the DLC. Builds for exe 1.0.0.2976 do not run on it.
+For Crimson Desert exe 1.0.0.3424 (the update of 30 October 2026), with or
+without the DLC. Builds for the earlier exes, 1.0.0.3392 and 1.0.0.2976, do
+not run properly on it.
 
 A speeder bike in the style of Return of the Jedi, as a mount of its own in
 the saddle wedge. It rides on the ground only, with the movie's engine
@@ -65,10 +66,12 @@ with a label and range for each.
 ## With Broomy
 
 Both plugins can be installed together, and each mount gets its own entry
-in the saddle wedge. On this exe Broomy needs to be 1.0.7 or newer, its
-build for the DLC update. Kliff keeps his speeder pose on the speeder and his
+in the saddle wedge. On this exe Broomy needs to be 1.0.8 or newer, its
+build for exe 1.0.0.3424. Kliff keeps his speeder pose on the speeder and his
 broom pose on Broomy. With both installed, the engine and the speeder's poses
-follow the mount he is on, so the engine stays quiet on Broomy.
+follow the mount he is on from the moment he starts getting on, so the
+engine stays quiet on Broomy even when he goes straight from one to the
+other.
 
 ## Uninstalling
 

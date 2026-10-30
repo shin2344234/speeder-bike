@@ -9,7 +9,7 @@ mount, and it keeps Broomy's machinery: the rows the game reads, the riding
 charts made from the Wyvern's and the grant that gives a save the mount.
 Broomy and Speeder Bike can be installed together.
 
-Target: Crimson Desert exe 1.0.0.3392 (Steam build 26308950). Players should read
+Target: Crimson Desert exe 1.0.0.3424 (Steam build 26317560). Players should read
 `mod/README.md`, which ships with the plugin and covers installing, settings
 and the known limits.
 
@@ -111,7 +111,12 @@ With Broomy out as well, both riding charts keep running after Kliff gets
 off. Each mount's chart notes its last real state change, and the mount
 whose chart changed last is the one he is on, so the engine and the
 speeder's poses stay off on Broomy. A parked speeder's chart checks its way
-back to its idle every frame, and those checks do not count.
+back to its idle every frame, and those checks do not count. Getting on is
+the exception: a mount action ends in that idle too, so the mount actions'
+branch to it (rider action 082F0420) counts for its chart on every check,
+from the first frame of the mount, though the game lets it through only 2.1 s
+later. The engine also waits until riding has held for 100 ms, since Kliff's
+seated check comes about 12 ms before the RideOn charts' checks.
 `SpeederBikeRideOnChart` tells Broomy.asi where the speeder's chart is, and a
 swap that finds Broomy's targets in place waits for the next check.
 
