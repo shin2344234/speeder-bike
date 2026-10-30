@@ -1,26 +1,30 @@
 #pragma once
 #include <cstdint>
 
-// Byte patterns and layouts for Crimson Desert exe 1.0.0.3392 (Steam build
-// 26308950, the DLC). 2976 offsets in the comments are the old exe's, kept
-// where they explain a find; patch-dlc/catalog/3392 has the evidence.
+// Byte patterns and layouts for Crimson Desert exe 1.0.0.3424 (Steam build
+// 26317560, 30 October 2026). 3424 is 3392's code moved: every function the
+// plugin uses compares equal once addresses are masked
+// (patch-dlc/work/speeder-bike/3392/tools/relocate.py and asmdiff.py), so
+// the offsets in the comments below are still 3392's unless they say 3424.
+// 2976 offsets are the exe before the DLC, kept where they explain a find;
+// patch-dlc/catalog/3392 has the evidence.
 // Each says what it finds and where it was on this exe; the plugin always
 // searches and never trusts the offset. private/KNOWLEDGE.md has the story
 // behind each one.
 
 namespace bm::sig
 {
-    // Where each hooked entry is on exe 1.0.0.3392, for farhook::Locate:
+    // Where each hooked entry is on exe 1.0.0.3424, for farhook::Locate:
     // Broomy.asi hooks the same entries first, and a pattern that starts at
-    // an entry no longer matches once a hook is on it.
-    inline constexpr uintptr_t kRva_LoaderFindSource = 0x14A93F0;
-    inline constexpr uintptr_t kRva_LoaderIndexOf = 0x14AA990;
-    inline constexpr uintptr_t kRva_LoaderExists = 0x14AAA00;
-    inline constexpr uintptr_t kRva_ResourceRead = 0x14A9690;
-    inline constexpr uintptr_t kRva_AppearanceLoad = 0x2625670;
-    inline constexpr uintptr_t kRva_SendRequest = 0x3A5470;
-    inline constexpr uintptr_t kRva_ServerHire = 0x2E42400;
-    inline constexpr uintptr_t kRva_ServerMoveHandler = 0x2BE06E0;
+    // an entry no longer matches once a hook is on it. 3392's in comments.
+    inline constexpr uintptr_t kRva_LoaderFindSource = 0x14AA520;     // 0x14A93F0
+    inline constexpr uintptr_t kRva_LoaderIndexOf = 0x14ABAC0;         // 0x14AA990
+    inline constexpr uintptr_t kRva_LoaderExists = 0x14ABB30;          // 0x14AAA00
+    inline constexpr uintptr_t kRva_ResourceRead = 0x14AA7C0;          // 0x14A9690
+    inline constexpr uintptr_t kRva_AppearanceLoad = 0x2626920;        // 0x2625670
+    inline constexpr uintptr_t kRva_SendRequest = 0x3A5570;            // 0x3A5470
+    inline constexpr uintptr_t kRva_ServerHire = 0x2E43C00;            // 0x2E42400
+    inline constexpr uintptr_t kRva_ServerMoveHandler = 0x2BE1E70;     // 0x2BE06E0
 
     // ---- Files -------------------------------------------------------------
 

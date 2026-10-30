@@ -19,7 +19,7 @@
 // idle to the cut orca rider's EFD5260B the same way, a step later than the
 // lower, so its clip is loaded first.
 //
-// Both go through the branch check (+0x25152D0). Install(true) also logs
+// Both go through the branch check (+0x2516560). Install(true) also logs
 // each chart layer's next action, for testing.
 namespace bm::riderfix
 {

@@ -50,7 +50,7 @@ namespace bm::farhook
     bool Patched(uintptr_t target);
     // A function by its pattern, which starts at its entry. Broomy.asi loads
     // first and patches some of the same entries, so when the pattern finds
-    // nothing and the entry at `rva` (exe 1.0.0.3392) is patched, that is
+    // nothing and the entry at `rva` (exe 1.0.0.3424) is patched, that is
     // the function.
     uintptr_t Locate(const char* pattern, uintptr_t rva);
     // Install, InstallOverAbsJump or InstallOverJump, whichever the entry
