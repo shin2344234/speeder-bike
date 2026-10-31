@@ -148,7 +148,7 @@ namespace
     {
         WriteDefaultIni();
         const bool give = ReadSetting(L"GiveSpeeder", 1) != 0;
-        LOG("[mod] %s %s for Crimson Desert exe 1.0.0.3446. GiveSpeeder=%d. Broomy is %s.", BM_NAME,
+        LOG("[mod] %s %s for Crimson Desert exe 1.0.0.3460. GiveSpeeder=%d. Broomy is %s.", BM_NAME,
             BM_VERSION, give ? 1 : 0, g_broomy ? "installed too" : "not installed");
         if (!g_serving)
             LOG_ERR("[mod] the speeder's files are not being served (see the [files] line above), so the speeder does "
