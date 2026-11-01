@@ -16,9 +16,16 @@ namespace
     // argument a pointer whose first field is the branch record). The error
     // is 0 when the branch may be taken. The record's target action hash is
     // at +0x14.
-    constexpr uintptr_t kRva_BranchCheck = 0x251AE90;   // 0x2517710 on 3446, 0x2516560 on 3424, 0x25152D0 on 3392, 0x232E3D0 on 2976
+    constexpr uintptr_t kRva_BranchCheck = 0x251B1A0;   // 0x251AE90 on 3460, 0x2517710 on 3446, 0x2516560 on 3424, 0x25152D0 on 3392, 0x232E3D0 on 2976
     constexpr uint8_t kBranchCheckHead[] = { 0x48, 0x8B, 0xC4, 0x48, 0x89, 0x58, 0x10, 0x4C, 0x89, 0x48, 0x20, 0x44,
                                              0x88, 0x40, 0x18, 0x48, 0x89, 0x48, 0x08 };
+    // Broomy's jump covers the head, so the check is found by what follows
+    // it: 39 bytes from +0x13, unique on 3446, 3460 and 3462. The address
+    // above is used only when they are not found.
+    constexpr char kSig_BranchCheckBody[] =
+        "55 56 57 41 54 41 55 41 56 41 57 48 8D 68 98 48 81 EC 30 01 00 00 "
+        "C5 F8 29 70 B8 C5 F8 29 78 A8 45 0F B6 F8 48 8B FA";
+    constexpr uintptr_t kBody_BranchCheck = 0x13;
 
     typedef uint64_t (*FnCheck)(uintptr_t, uint32_t*, uintptr_t, uintptr_t, uintptr_t, uintptr_t, uintptr_t, uintptr_t,
                                 uintptr_t, uintptr_t, uintptr_t, uintptr_t);
@@ -499,13 +506,15 @@ namespace bm::riderfix
     bool Install(bool logStates)
     {
         g_log = logStates;
-        const uintptr_t at = bm::mem::Game().base + kRva_BranchCheck;
+        const uintptr_t body = bm::mem::FindUnique(kSig_BranchCheckBody);
+        const uintptr_t at = body ? body - kBody_BranchCheck : bm::mem::Game().base + kRva_BranchCheck;
         uint8_t head[sizeof kBranchCheckHead] = {};
         // Broomy.asi, loaded first, hooks the same check.
         if (!bm::farhook::Patched(at) &&
             (!bm::mem::ReadBytes(at, head, sizeof head) || memcmp(head, kBranchCheckHead, sizeof head) != 0))
         {
-            LOG_ERR("[rider] the branch check is not at +0x%llX on this exe.", static_cast<unsigned long long>(kRva_BranchCheck));
+            LOG_ERR("[rider] the branch check is not at +0x%llX on this exe.",
+                    static_cast<unsigned long long>(at - bm::mem::Game().base));
             return false;
         }
         char why[160] = {};

@@ -1,8 +1,8 @@
 #pragma once
 #include <cstdint>
 
-// Byte patterns and layouts for Crimson Desert exe 1.0.0.3460 (Steam build
-// 26345091, 31 October 2026). 3424, 3446 and 3460 are 3392's code moved: every
+// Byte patterns and layouts for Crimson Desert exe 1.0.0.3462 (Steam build
+// 26356046, 1 November 2026). 3424, 3446, 3460 and 3462 are 3392's code moved: every
 // function the plugin uses compares equal once addresses are masked
 // (patch-dlc/work/speeder-bike/3392/tools/relocate.py and asmdiff.py), so
 // the offsets in the comments below are still 3392's unless they say 3424.
@@ -14,17 +14,17 @@
 
 namespace bm::sig
 {
-    // Where each hooked entry is on exe 1.0.0.3460, for farhook::Locate:
+    // Where each hooked entry is on exe 1.0.0.3462, for farhook::Locate:
     // Broomy.asi hooks the same entries first, and a pattern that starts at
-    // an entry no longer matches once a hook is on it. 3446's in comments.
-    inline constexpr uintptr_t kRva_LoaderFindSource = 0x14AE140;     // 0x14AB030
-    inline constexpr uintptr_t kRva_LoaderIndexOf = 0x14AF6E0;         // 0x14AC5D0
-    inline constexpr uintptr_t kRva_LoaderExists = 0x14AF750;          // 0x14AC640
-    inline constexpr uintptr_t kRva_ResourceRead = 0x14AE3E0;          // 0x14AB2D0
-    inline constexpr uintptr_t kRva_AppearanceLoad = 0x262B0A0;        // 0x2627AD0
-    inline constexpr uintptr_t kRva_SendRequest = 0x3A5A30;            // 0x3A55B0
-    inline constexpr uintptr_t kRva_ServerHire = 0x2E490A0;            // 0x2E45550
-    inline constexpr uintptr_t kRva_ServerMoveHandler = 0x2BE7090;     // 0x2BE37C0
+    // an entry no longer matches once a hook is on it. 3460's in comments.
+    inline constexpr uintptr_t kRva_LoaderFindSource = 0x14AE140;     // 0x14AE140
+    inline constexpr uintptr_t kRva_LoaderIndexOf = 0x14AF6E0;         // 0x14AF6E0
+    inline constexpr uintptr_t kRva_LoaderExists = 0x14AF750;          // 0x14AF750
+    inline constexpr uintptr_t kRva_ResourceRead = 0x14AE3E0;          // 0x14AE3E0
+    inline constexpr uintptr_t kRva_AppearanceLoad = 0x262B3B0;        // 0x262B0A0
+    inline constexpr uintptr_t kRva_SendRequest = 0x3A5A30;            // 0x3A5A30
+    inline constexpr uintptr_t kRva_ServerHire = 0x2E493E0;            // 0x2E490A0
+    inline constexpr uintptr_t kRva_ServerMoveHandler = 0x2BE73C0;     // 0x2BE7090
 
     // ---- Files -------------------------------------------------------------
 

@@ -9,7 +9,7 @@ mount, and it keeps Broomy's machinery: the rows the game reads, the riding
 charts made from the Wyvern's and the grant that gives a save the mount.
 Broomy and Speeder Bike can be installed together.
 
-Target: Crimson Desert exe 1.0.0.3460 (Steam build 26345091). Players should read
+Target: Crimson Desert exe 1.0.0.3462 (Steam build 26356046). Players should read
 `mod/README.md`, which ships with the plugin and covers installing, settings
 and the known limits.
 
