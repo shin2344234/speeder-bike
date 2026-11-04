@@ -1,7 +1,7 @@
-# Speeder Bike 1.0.9
+# Speeder Bike 1.0.11
 
-For Crimson Desert exe 1.0.0.3479 (the second update of 1 November 2026),
-with or without the DLC. Builds for the earlier exes, 1.0.0.3462,
+For Crimson Desert exe 1.0.0.3527 (the update of 4 November 2026), with or
+without the DLC. Builds for the earlier exes, 1.0.0.3479, 1.0.0.3462,
 1.0.0.3460, 1.0.0.3446, 1.0.0.3424, 1.0.0.3392 and 1.0.0.2976, do not run
 properly on it.
 
@@ -68,7 +68,7 @@ with a label and range for each.
 
 Both plugins can be installed together, and each mount gets its own entry
 in the saddle wedge. On this exe Broomy needs to be 1.0.9 or newer. Broomy
-1.0.9 runs on 1.0.0.3446, 1.0.0.3460, 1.0.0.3462 and 1.0.0.3479 alike. Kliff keeps his speeder pose on the speeder and his
+1.0.9 runs on 1.0.0.3446, 1.0.0.3460, 1.0.0.3462, 1.0.0.3479 and 1.0.0.3527 alike. Kliff keeps his speeder pose on the speeder and his
 broom pose on Broomy. With both installed, the engine and the speeder's poses
 follow the mount he is on from the moment he starts getting on, so the
 engine stays quiet on Broomy even when he goes straight from one to the
