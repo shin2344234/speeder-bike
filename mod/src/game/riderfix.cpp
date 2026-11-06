@@ -16,11 +16,11 @@ namespace
     // argument a pointer whose first field is the branch record). The error
     // is 0 when the branch may be taken. The record's target action hash is
     // at +0x14.
-    constexpr uintptr_t kRva_BranchCheck = 0x251EE10;   // 0x251B150 on 3479, 0x251B1A0 on 3462, 0x251AE90 on 3460, 0x2517710 on 3446, 0x2516560 on 3424, 0x25152D0 on 3392, 0x232E3D0 on 2976
+    constexpr uintptr_t kRva_BranchCheck = 0x251FBE0;   // 0x251EE10 on 3527, 0x251B150 on 3479, 0x251B1A0 on 3462, 0x251AE90 on 3460, 0x2517710 on 3446, 0x2516560 on 3424, 0x25152D0 on 3392, 0x232E3D0 on 2976
     constexpr uint8_t kBranchCheckHead[] = { 0x48, 0x8B, 0xC4, 0x48, 0x89, 0x58, 0x10, 0x4C, 0x89, 0x48, 0x20, 0x44,
                                              0x88, 0x40, 0x18, 0x48, 0x89, 0x48, 0x08 };
     // Broomy's jump covers the head, so the check is found by what follows
-    // it: 39 bytes from +0x13, unique on 3446, 3460, 3462, 3479 and 3527. The address
+    // it: 39 bytes from +0x13, unique on 3446, 3460, 3462, 3479, 3527 and 3576. The address
     // above is used only when they are not found.
     constexpr char kSig_BranchCheckBody[] =
         "55 56 57 41 54 41 55 41 56 41 57 48 8D 68 98 48 81 EC 30 01 00 00 "

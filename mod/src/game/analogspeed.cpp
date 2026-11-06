@@ -12,16 +12,16 @@
 
 namespace
 {
-    // The movement update (+0xBC6A70 on 3527: object, seconds, speed record
-    // out, flag out) has one caller, +0xBC71D0, which calls it at +0xBC740E.
-    // The pattern starts at +0xBC7400; the call is 14 bytes in. 3424 moved
+    // The movement update (+0xBC6E90 on 3576: object, seconds, speed record
+    // out, flag out) has one caller, +0xBC75F0, which calls it at +0xBC782E.
+    // The pattern starts at +0xBC7820; the call is 14 bytes in. 3424 moved
     // all of it 0x800 up from 3392, 3446 another 0xC0, 3460 0xF90, 3479
-    // 0x30 back down from 3462's +0xBC5A20 and 3527 0x1080 up again, with the code unchanged. The lea's base
+    // 0x30 back down from 3462's +0xBC5A20 3527 0x1080 up again and 3576 another 0x420, with the code unchanged. The lea's base
     // register was r13 on 2976 and is r14 since 3392.
     constexpr const char* kSig_MoveUpdateCall =
         "4D 8D ?? 04 01 00 00 4C 8D 45 B0 48 8B CF E8 ?? ?? ?? ?? C5 7A 10 55 C4";
     constexpr unsigned kCallOffset = 14;
-    constexpr uintptr_t kRva_MoveUpdate = 0xBC6A70;   // 0xBC59F0 on 3479, 0xBC5A20 on 3462, 0xBC4A90 on 3446, 0xBC49D0 on 3424, 0xBC41D0 on 3392
+    constexpr uintptr_t kRva_MoveUpdate = 0xBC6E90;   // 0xBC6A70 on 3527, 0xBC59F0 on 3479, 0xBC5A20 on 3462, 0xBC4A90 on 3446, 0xBC49D0 on 3424, 0xBC41D0 on 3392
 
     // The speed record's word 6 (+0x18) is the state's speed in m/s. The
     // caller keeps the speed it started moving at in the object at +0x11C
