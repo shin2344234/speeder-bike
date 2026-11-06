@@ -518,13 +518,29 @@ namespace bm::broomchart
     // u16 (sub-package count, first sub-package, path, slot, name; the last
     // three index the strings), and the sub-packages as two u16 (path,
     // slot). The Wyvern's CD_M0004_Dragon has one sub-package, its riding
-    // chart in the RideOnDragon slot; GoldStar's upper group gets one of its
-    // own in the same slot, a new sub-package at the end naming the
-    // armadillo's chart path, which the list already holds.
+    // chart in the RideOnDragon slot; the speeder's upper group gets one of
+    // its own in the same slot, a new sub-package at the end naming the
+    // small tank's chart path, which the list already holds. The Wyvern's
+    // lower group has none, so the speeder's lower group loses the ghost's
+    // two (its fist and weapon selector charts); they stay in the list,
+    // unnamed by any group.
+    namespace
+    {
+        // A served chart path as the package list names it: no
+        // "actionchart/bin__/" and no ".paac".
+        std::string ListPath(const char* served)
+        {
+            std::string p = served;
+            const std::string head = "actionchart/bin__/";
+            if (p.compare(0, head.size(), head) == 0) p = p.substr(head.size());
+            if (p.size() > 5 && p.compare(p.size() - 5, 5, ".paac") == 0) p.resize(p.size() - 5);
+            return p;
+        }
+    }
+
     bool BuildPackageDesc(const std::string& game, std::string& out, std::string& report, std::string& why)
     {
         constexpr const char* kWyvern = "CD_M0004_Dragon";
-        constexpr const char* kGoldStar = "CD_R0014_Boat";
         constexpr const char* kRideOn = "upperaction/2_mon/m0010_tanksmall_upper";
         if (game.size() < 2)
         {
@@ -558,24 +574,34 @@ namespace bm::broomchart
             why = "the package list is not the size its counts say";
             return false;
         }
-        size_t wyvern = 0, gold = 0;
-        int foundW = 0, foundG = 0;
+        size_t wyvern = 0, upper = 0, lower = 0;
+        int foundW = 0, foundU = 0, foundL = 0;
         for (uint32_t r = 0; r < packages; ++r)
         {
             const size_t rec = base + 10ull * r;
             const uint16_t name = Peek<uint16_t>(game, rec + 8);
             if (name >= strs.size()) continue;
             if (strs[name] == kWyvern) wyvern = rec, ++foundW;
-            if (strs[name] == kGoldStar) gold = rec, ++foundG;
+            if (strs[name] == kUpperGroup) upper = rec, ++foundU;
+            if (strs[name] == kLowerGroup) lower = rec, ++foundL;
         }
-        if (foundW != 1 || foundG != 1)
+        if (foundW != 1 || foundU != 1 || foundL != 1)
         {
-            why = "the package list does not have the Wyvern's and the boat's upper groups once each";
+            why = "the package list does not have the Wyvern's upper group and the speeder's two groups once each";
             return false;
         }
-        if (Peek<uint16_t>(game, wyvern) != 1 || Peek<uint16_t>(game, gold) != 0)
+        const auto pathOf = [&](size_t rec) -> std::string {
+            const uint16_t i = Peek<uint16_t>(game, rec + 4);
+            return i < strs.size() ? strs[i] : std::string();
+        };
+        if (pathOf(upper) != ListPath(kCharts[0].path) || pathOf(lower) != ListPath(kCharts[1].path))
         {
-            why = "the Wyvern's upper group has other than one sub-package, or the boat's already has one";
+            why = "the speeder's groups in the package list name other charts than the ones it serves";
+            return false;
+        }
+        if (Peek<uint16_t>(game, wyvern) != 1 || Peek<uint16_t>(game, upper) != 0)
+        {
+            why = "the Wyvern's upper group has other than one sub-package, or the speeder's already has one";
             return false;
         }
         int rideOn = -1, seen = 0;
@@ -593,15 +619,17 @@ namespace bm::broomchart
             return false;
         }
         const uint16_t slot = Peek<uint16_t>(game, base + 10ull * packages + 4ull * firstSub + 2);
+        const uint16_t lowerSubs = Peek<uint16_t>(game, lower);
         out = game;
         Poke<uint32_t>(out, at + 4, subs + 1);
-        Poke<uint16_t>(out, gold, 1);
-        Poke<uint16_t>(out, gold + 2, static_cast<uint16_t>(subs));
+        Poke<uint16_t>(out, upper, 1);
+        Poke<uint16_t>(out, upper + 2, static_cast<uint16_t>(subs));
+        Poke<uint16_t>(out, lower, 0);
         out += std::string(reinterpret_cast<const char*>(&rideOn), 2);
         out += std::string(reinterpret_cast<const char*>(&slot), 2);
-        char line[200];
-        snprintf(line, sizeof line, "%s has sub-package %u, %s %s", kGoldStar, subs,
-                 slot < strs.size() ? strs[slot].c_str() : "?", kRideOn);
+        char line[300];
+        snprintf(line, sizeof line, "%s has sub-package %u, %s %s; %s drops its %u", kUpperGroup, subs,
+                 slot < strs.size() ? strs[slot].c_str() : "?", kRideOn, kLowerGroup, lowerSubs);
         report = line;
         return true;
     }

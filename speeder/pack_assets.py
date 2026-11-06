@@ -72,7 +72,7 @@ STAND_INS = {
 # charts (broomchart.h).
 ALIASES = {
     "character/bin__/meshphysics/" + SPEED + ".hkx": "character/bin__/meshphysics/" + BROOM + ".hkx",
-    "actionchart/bin__/attackinfo/upperaction/4_riding/r0014_boat_upper.paatt":
+    "actionchart/bin__/attackinfo/upperaction/2_mon/minigame_0001_upper.paatt":
         "actionchart/bin__/attackinfo/upperaction/2_mon/m0004_dragon_upper.paatt",
     "actionchart/bin__/attackinfo/upperaction/2_mon/m0010_tanksmall_upper.paatt":
         "actionchart/bin__/attackinfo/upperaction/2_mon/m0004_ride_dragon_upper.paatt",

@@ -65,6 +65,11 @@ namespace bm::broomrows
     // broom's) or the Wyvern's. Own unless the plugin cannot redirect the
     // broom's animations; set before the tables are built.
     void UseOwnCharts(bool own);
+    // The shipped characterinfo row that names the speeder's own chart
+    // groups, found when characterinfo is built; empty when none does. The
+    // speeder then has the Wyvern's charts, and the plugin must stop serving
+    // its own.
+    const std::string& ChartsClaimedBy();
 
     // What the characterinfo build learns that the grant needs: Broomy's
     // row, and each row's _mercenaryInfo (-1 where the record does not say).

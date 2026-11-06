@@ -103,10 +103,10 @@ namespace
         Expect(vehicle == 20001 && static_cast<uint8_t>(r[base + 0xD7]) == 88 && r[base + 10] == 1,
                "its vehicle row is 20001, its mercenary list 88, and it is hirable");
         const auto key = [](const char* s) { return U32(bm::hash::Little(s)); };
-        Expect(Count(r, key("CD_R0014_Boat_Lower") + key("CD_R0014_Boat")) == 1 &&
+        Expect(Count(r, key(bm::broomchart::kLowerGroup) + key(bm::broomchart::kUpperGroup)) == 1 &&
                    Count(r, key(bm::broomrows::kAppearancePath)) == 1 && Count(r, key("animal_orca")) == 1 &&
                    Count(r, key("character/model/4_riding/cd_r0032_00_broom/cd_r0032_00_broom.pab")) == 1,
-               "it names the boat's charts, the speeder's appearance, the orca's gameplay data and the broom's skeleton");
+               "it names the speeder's chart groups, its appearance, the orca's gameplay data and the broom's skeleton");
         Expect(Count(r, key("cd_portraitimage_Speeder")) == 1 && Count(r, key("cd_portraitimage_Riding_AlpineIbex_1")) == 0,
                "it names the speeder's portrait, not the ibex's");
         uint64_t ibexCool = 300;
@@ -208,6 +208,9 @@ int main(int argc, char** argv)
             Expect(Has(th, tb, 1900001), "Broomy's row is still there");
             Expect(Has(th, tb, 1900002), "the speeder's row is there");
             Expect(facts.broomyRow >= 0, "the speeder's row number is known for the grant");
+            Expect(bm::broomrows::ChartsClaimedBy().empty(), "no shipped row names the speeder's chart groups");
+            if (!bm::broomrows::ChartsClaimedBy().empty())
+                printf("         %s names them\n", bm::broomrows::ChartsClaimedBy().c_str());
             CheckSpeederRow(th, tb, facts);
         }
         else if (!strcmp(name, "mercenaryinfo"))

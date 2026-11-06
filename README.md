@@ -30,9 +30,13 @@ edit. The game reads its own files and the plugin hands it changed copies:
   texture list gains. On this exe the map builds its icons from compiled
   layout files, `ui/bin__/*mapicon*_game.uibinary`, so the plugin copies the
   hired ibex's component in those too, renamed for the speeder.
-- Charts made from the Wyvern's riding charts, served under the cut boat's
-  chart packages, with every branch into a flying state cut, so the speeder
-  never takes off. Every animation path names a clip of the speeder's own,
+- Charts made from the Wyvern's riding charts, served under two cut chart
+  packages no character names, a minigame's upper one and a ghost's lower
+  one, with every branch into a flying state cut, so the speeder never takes
+  off. The plugin checks every characterinfo row for those two packages
+  first and keeps the Wyvern's if one names them. Up to 1.0.11 the speeder
+  had the cut boat's, which the DLC's pirate ship uses, so ships ran the
+  speeder's charts. Every animation path names a clip of the speeder's own,
   `cd_rd_speed_basic_*`, each the broom idle's first frame held for the
   length of the broom clip it replaces, so the speeder hangs still on its
   seat bone whatever state it is in.

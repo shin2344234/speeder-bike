@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <cstring>
 
+#include "game/broomchart.h"
 #include "game/hash.h"
 #include "game/lz4.h"
 #include "game/tablefile.h"
@@ -51,14 +52,16 @@ namespace bm::broomrows
         constexpr uint32_t kWyvernRide[2] = { 1000068, 1000264 };   // Broom_Ride, Wyvern_RideAir
         constexpr uint32_t kIbexRide[2] = { 1000098, 1000085 };
 
-        // The charts of the cut boat, which no character uses, served as the
-        // speeder's own (broomchart.h); the Wyvern's when they cannot be.
-        // Broomy has GoldStar's.
-        constexpr const char* kOwnUpper = "CD_R0014_Boat";
-        constexpr const char* kOwnLower = "CD_R0014_Boat_Lower";
+        // The cut minigame's upper group and the cut ghost's lower one, which
+        // no character uses, served as the speeder's own (broomchart.h); the
+        // Wyvern's when they cannot be, or when a shipped row names them
+        // (g_claimedBy). Broomy has GoldStar's.
+        constexpr const char* kOwnUpper = bm::broomchart::kUpperGroup;
+        constexpr const char* kOwnLower = bm::broomchart::kLowerGroup;
         constexpr const char* kWyvernUpper = "CD_M0004_Dragon";
         constexpr const char* kWyvernLower = "CD_M0004_Dragon_Lower";
         bool g_ownCharts = true;
+        std::string g_claimedBy;
         constexpr const char* kGameplay = "animal_orca";
         constexpr const char* kSkeleton = "character/model/4_riding/cd_r0032_00_broom/cd_r0032_00_broom.pab";
         constexpr const char* kPortrait = "cd_portraitimage_Speeder";
@@ -277,6 +280,33 @@ namespace bm::broomrows
             {
                 why = "the ibex's asset strings do not fit the record";
                 return false;
+            }
+            // No shipped row may name the speeder's chart groups, or that
+            // character runs the speeder's charts. 1.0.12 and earlier had the
+            // cut boat's, and exe 3392 gave them to the DLC's pirate ship,
+            // which then tilted and would not sail. The two keys sit at the
+            // same place after every row's key, so a later game that hands
+            // these groups to a character is caught here and the speeder
+            // falls back to the Wyvern's charts.
+            if (g_ownCharts)
+            {
+                const size_t off = run - base;
+                const uint32_t own[2] = { Key(kOwnLower), Key(kOwnUpper) };
+                for (size_t row = 0; row < t.Rows() && g_claimedBy.empty(); ++row)
+                {
+                    const std::string& other = t.RecordAt(row);
+                    const size_t b = AfterKey(other, t.KeyAt(row).key);
+                    if (b == std::string::npos || b + off + 8 > other.size()) continue;
+                    const uint32_t lower = Peek<uint32_t>(other, b + off), upper = Peek<uint32_t>(other, b + off + 4);
+                    for (uint32_t k : own)
+                        if (lower == k || upper == k)
+                        {
+                            const uint32_t n = Peek<uint32_t>(other, 0);
+                            g_claimedBy = n && n < 128 ? other.substr(4, n) : std::to_string(t.KeyAt(row).key);
+                            break;
+                        }
+                }
+                if (!g_claimedBy.empty()) g_ownCharts = false;
             }
             const char* ours[kAssetCount] = { ChartLower(), ChartUpper(), nullptr, nullptr, nullptr, nullptr, nullptr,
                                               kSkeleton, nullptr, nullptr, kGameplay, kAppearancePath };
@@ -651,6 +681,7 @@ namespace bm::broomrows
     }
 
     void UseOwnCharts(bool own) { g_ownCharts = own; }
+    const std::string& ChartsClaimedBy() { return g_claimedBy; }
 
     bool BuildTable(const char* name, const std::string& header, const std::string& body, std::string& outHeader,
                     std::string& outBody, std::string& report, std::string& why, CharacterFacts* facts)

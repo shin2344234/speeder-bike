@@ -93,7 +93,7 @@ namespace bm::speederfiles
         { "actionchart/bin__/animmeta/4_riding/cd_r0032_00_broom/cd_rd_speed_basic_00_00_nor_std_mount_r_00.paa_metabin", "actionchart/bin__/animmeta/4_riding/cd_r0032_00_broom/cd_rd_broom_basic_00_00_nor_std_mount_r_00.paa_metabin", 0, false },
         { "actionchart/bin__/animmeta/4_riding/cd_r0032_00_broom/cd_rd_speed_basic_00_00_nor_std_takeoff_00.paa_metabin", "actionchart/bin__/animmeta/4_riding/cd_r0032_00_broom/cd_rd_broom_basic_00_00_nor_std_idle_01.paa_metabin", 0, false },
         { "actionchart/bin__/attackinfo/upperaction/2_mon/m0010_tanksmall_upper.paatt", "actionchart/bin__/attackinfo/upperaction/2_mon/m0004_ride_dragon_upper.paatt", 0, false },
-        { "actionchart/bin__/attackinfo/upperaction/4_riding/r0014_boat_upper.paatt", "actionchart/bin__/attackinfo/upperaction/2_mon/m0004_dragon_upper.paatt", 0, false },
+        { "actionchart/bin__/attackinfo/upperaction/2_mon/minigame_0001_upper.paatt", "actionchart/bin__/attackinfo/upperaction/2_mon/m0004_dragon_upper.paatt", 0, false },
         { "character/bin__/meshphysics/4_riding/cd_r0032_00_broom/cd_r0032_00_speed_0001.hkx", "character/bin__/meshphysics/4_riding/cd_r0032_00_broom/cd_r0032_00_broom_0001.hkx", 0, false },
     };
 }

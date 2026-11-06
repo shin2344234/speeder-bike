@@ -92,7 +92,7 @@ namespace
             for (int c = 0; c < kChartCount && read; ++c)
                 if (!bm::gamefile::ReadFile(kCharts[c].source, wyvern[c]))
                 {
-                    LOG_ERR("[charts] %s did not read, so the speeder has the boat's own charts and will not move.",
+                    LOG_ERR("[charts] %s did not read, so the speeder has the minigame's and ghost's own charts and will not move.",
                             kCharts[c].source);
                     read = false;
                 }
@@ -103,7 +103,7 @@ namespace
                 LOG("[charts] the speeder's charts are the Wyvern's with the broom's animations: %s.", report.c_str());
             }
             else if (read)
-                LOG_ERR("[charts] the speeder's charts could not be made (%s), so it has the boat's own and will not move.",
+                LOG_ERR("[charts] the speeder's charts could not be made (%s), so it has the minigame's and ghost's own and will not move.",
                         why.c_str());
         }
         ReleaseSRWLockExclusive(&g_chartsLock);
@@ -246,6 +246,14 @@ namespace
                     e.shipped[0] = { h.size(), bm::tablefile::Crc32(h.data(), h.size()) };
                     e.shipped[1] = { b.size(), bm::tablefile::Crc32(b.data(), b.size()) };
                     LOG("[tables] %s", report.c_str());
+                    if (character && g_ownCharts && !bm::broomrows::ChartsClaimedBy().empty())
+                    {
+                        g_ownCharts = false;
+                        LOG_ERR("[charts] characterinfo row %s names %s or %s, so the speeder runs the Wyvern's charts "
+                                "and serves none of its own.",
+                                bm::broomrows::ChartsClaimedBy().c_str(), bm::broomchart::kUpperGroup,
+                                bm::broomchart::kLowerGroup);
+                    }
                     if (character)
                     {
                         AcquireSRWLockExclusive(&g_factsLock);
