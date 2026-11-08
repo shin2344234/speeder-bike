@@ -62,8 +62,11 @@ STAND_INS = {
     MESH: BROOM_MESH,
     MATERIAL: "character/modelproperty/" + BROOM + ".pac_xml",
     # make_icons.py's, each standing in for a shipped texture of its size.
+    # A stand-in must be an entry the game never asks for under its own name: the
+    # file index is shared, so a picture that is loaded through it can appear
+    # in place of the other. No table, UI file or the exe names this portrait's.
     "ui/texture/image/portraitimage/cd_mercenary_portrait_riding_speeder_1.dds":
-        "ui/texture/image/portraitimage/cd_mercenary_portrait_domestic_animal_riding_alpineibex_1.dds",
+        "ui/texture/icon/temicon_baked_egg.dds",
     "ui/texture/cd_icon_map_speeder.dds": "ui/texture/image/customizeimage/cd_customize_empty_image.dds",
 }
 

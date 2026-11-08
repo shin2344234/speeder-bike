@@ -72,7 +72,7 @@ namespace bm::speederfiles
         { "character/texture/cd_r0032_00_speeder_0001_n.dds", "character/texture/cd_t0000_broom_0001_n.dds", 254, false },
         { "character/texture/cd_r0032_00_speeder_0001_sp.dds", "character/texture/cd_t0000_broom_0001_sp.dds", 255, false },
         { "ui/texture/cd_icon_map_speeder.dds", "ui/texture/image/customizeimage/cd_customize_empty_image.dds", 256, false },
-        { "ui/texture/image/portraitimage/cd_mercenary_portrait_riding_speeder_1.dds", "ui/texture/image/portraitimage/cd_mercenary_portrait_domestic_animal_riding_alpineibex_1.dds", 257, false },
+        { "ui/texture/image/portraitimage/cd_mercenary_portrait_riding_speeder_1.dds", "ui/texture/icon/temicon_baked_egg.dds", 257, false },
         { "actionchart/bin__/animmeta/1_pc/1_phm/00_riding/cd_phm_rd_speed_basic_00_00_nor_move_run_f_ing_00.paa_metabin", "actionchart/bin__/animmeta/1_pc/1_phm/00_riding/cd_phm_rd_broom_basic_00_00_nor_std_idle_01.paa_metabin", 0, false },
         { "actionchart/bin__/animmeta/1_pc/1_phm/00_riding/cd_phm_rd_speed_basic_00_00_nor_move_runfast_f_ing_00.paa_metabin", "actionchart/bin__/animmeta/1_pc/1_phm/00_riding/cd_phm_rd_broom_basic_00_00_nor_std_idle_01.paa_metabin", 0, false },
         { "actionchart/bin__/animmeta/1_pc/1_phm/00_riding/cd_phm_rd_speed_basic_00_00_nor_move_walk_f_ing_00.paa_metabin", "actionchart/bin__/animmeta/1_pc/1_phm/00_riding/cd_phm_rd_broom_basic_00_00_nor_std_idle_01.paa_metabin", 0, false },
