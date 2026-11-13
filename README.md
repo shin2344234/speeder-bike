@@ -9,7 +9,9 @@ mount, and it keeps Broomy's machinery: the rows the game reads, the riding
 charts made from the Wyvern's and the grant that gives a save the mount.
 Broomy and Speeder Bike can be installed together.
 
-Target: Crimson Desert exe 1.0.0.3576 (Steam build 26480954). Players should read
+Target: Crimson Desert exe 1.0.0.3663 (game 2.05.00, Steam build 26636972),
+the patch of 13 November 2026. 1.0.13 is the first build for it and does not
+run on 1.0.0.3576. Players should read
 `mod/README.md`, which ships with the plugin and covers installing, settings
 and the known limits.
 
@@ -29,7 +31,10 @@ edit. The game reads its own files and the plugin hands it changed copies:
   hired ibex's, drawn with the speeder's own silhouette, which the map's
   texture list gains. On this exe the map builds its icons from compiled
   layout files, `ui/bin__/*mapicon*_game.uibinary`, so the plugin copies the
-  hired ibex's component in those too, renamed for the speeder.
+  hired ibex's component in those too, renamed for the speeder. The
+  portrait is served in place of `ui/texture/icon/temicon_baked_egg.dds`, a
+  file no table or UI list names. Up to 1.0.12 it took the ibex portrait's
+  place, the likely reason the ibex saddle showed the speeder at the tack shop.
 - Charts made from the Wyvern's riding charts, served under two cut chart
   packages no character names, a minigame's upper one and a ghost's lower
   one, with every branch into a flying state cut, so the speeder never takes
