@@ -1,11 +1,13 @@
 #pragma once
 #include <cstdint>
 
-// Byte patterns and layouts for Crimson Desert exe 1.0.0.3576 (Steam build
-// 26480954, 6 November 2026). 3424, 3446, 3460, 3462, 3479, 3527 and 3576 are 3392's code moved: every
+// Byte patterns and layouts for Crimson Desert exe 1.0.0.3663 (13 November
+// 2026). 3424, 3446, 3460, 3462, 3479, 3527 and 3576 are 3392's code moved: every
 // function the plugin uses compares equal once addresses are masked
 // (patch-dlc/work/speeder-bike/3392/tools/relocate.py and asmdiff.py), so
 // the offsets in the comments below are still 3392's unless they say 3424.
+// 3663 recompiled the server's hire and the client's call check (registers
+// and stack slots only) and renumbered the request ids.
 // 2976 offsets are the exe before the DLC, kept where they explain a find;
 // patch-dlc/catalog/3392 has the evidence.
 // Each says what it finds and where it was on this exe; the plugin always
@@ -14,17 +16,17 @@
 
 namespace bm::sig
 {
-    // Where each hooked entry is on exe 1.0.0.3576, for farhook::Locate:
+    // Where each hooked entry is on exe 1.0.0.3663, for farhook::Locate:
     // Broomy.asi hooks the same entries first, and a pattern that starts at
-    // an entry no longer matches once a hook is on it. 3527's in comments.
-    inline constexpr uintptr_t kRva_LoaderFindSource = 0x14AFC30;     // 0x14AF410
-    inline constexpr uintptr_t kRva_LoaderIndexOf = 0x14B11D0;         // 0x14B09B0
-    inline constexpr uintptr_t kRva_LoaderExists = 0x14B1240;          // 0x14B0A20
-    inline constexpr uintptr_t kRva_ResourceRead = 0x14AFED0;          // 0x14AF6B0
-    inline constexpr uintptr_t kRva_AppearanceLoad = 0x262FCC0;        // 0x262EEF0
-    inline constexpr uintptr_t kRva_SendRequest = 0x3A6310;            // 0x3A6030
-    inline constexpr uintptr_t kRva_ServerHire = 0x2E4F970;            // 0x2E4ED00
-    inline constexpr uintptr_t kRva_ServerMoveHandler = 0x2BED7D0;     // 0x2BECB60
+    // an entry no longer matches once a hook is on it. 3576's in comments.
+    inline constexpr uintptr_t kRva_LoaderFindSource = 0x14EEB50;     // 0x14AFC30
+    inline constexpr uintptr_t kRva_LoaderIndexOf = 0x14F00F0;         // 0x14B11D0
+    inline constexpr uintptr_t kRva_LoaderExists = 0x14F0160;          // 0x14B1240
+    inline constexpr uintptr_t kRva_ResourceRead = 0x14EEDF0;          // 0x14AFED0
+    inline constexpr uintptr_t kRva_AppearanceLoad = 0x269E6D0;        // 0x262FCC0
+    inline constexpr uintptr_t kRva_SendRequest = 0x3A9960;            // 0x3A6310
+    inline constexpr uintptr_t kRva_ServerHire = 0x2EB77A0;            // 0x2E4F970
+    inline constexpr uintptr_t kRva_ServerMoveHandler = 0x2C53270;     // 0x2BED7D0
 
     // ---- Files -------------------------------------------------------------
 
@@ -119,21 +121,25 @@ namespace bm::sig
         "E8 ?? ?? ?? ?? BD FE 01 00 00";
     // Request ids, each matched on 3392 by the one function that sends it
     // (2976 ids in brackets). 3392 gave 0x098D and 0x0AC1 to other messages.
-    inline constexpr uint16_t kReq_LoadingComplete = 0x0877;   // TrocTrLoadingCompleteReq (0x098D)
-    inline constexpr uint16_t kReq_WedgeChoice = 0x08F3;       // a radial wedge chosen, reserve slot at +5 (0x0AC1)
-    inline constexpr uint16_t kReq_MountCall = 0x0A53;         // the mount called (0x0876)
+    // 3663 renumbered them again (3576's in braces); each is the u16 at +0xC
+    // of the request's static descriptor, after the kind 4 at +8, the global
+    // its registration stub stores the class's vtable into.
+    inline constexpr uint16_t kReq_LoadingComplete = 0x0AE5;   // TrocTrLoadingCompleteReq (0x098D) {0x0877}
+    inline constexpr uint16_t kReq_WedgeChoice = 0x0B3F;       // a radial wedge chosen, reserve slot at +5 (0x0AC1) {0x08F3}
+    inline constexpr uint16_t kReq_MountCall = 0x0C4F;         // the mount called (0x0876) {0x0A53}
     // TrocTrHireMercenaryToTargetReq: u16 id, u8 0, u16 payload length 5,
     // u32 actor id, u8 0. The server hires that actor for the sender.
-    inline constexpr uint16_t kReq_HireToTarget = 0x0A63;      // (0x0B8F)
+    inline constexpr uint16_t kReq_HireToTarget = 0x0A09;      // (0x0B8F) {0x0A63}
 
     // The server's hire (+0x2E42400): (clan component, u32* error, u32*
     // actor id, u8, u8). It looks the actor up by id, reads its
     // characterinfo row from the status component (status +0x30), then that
     // row's _mercenaryInfo. The first twelve bytes are two stores and two
-    // pushes.
+    // pushes. 3663 dropped the store of rcx and keeps it in rsi, so the
+    // first twelve bytes are a store, a store and two pushes.
     inline constexpr const char* kSig_ServerHire =
-        "48 89 5C 24 10 4C 89 44 24 18 48 89 4C 24 08 55 56 57 41 54 41 55 41 56 41 57 48 8D 6C 24 C0 "
-        "48 81 EC 40 01 00 00 45 0F B6 E9 49 8B F8 4C 8B F2";
+        "48 89 5C 24 10 4C 89 44 24 18 55 56 57 41 54 41 55 41 56 41 57 48 8D 6C 24 C0 "
+        "48 81 EC 40 01 00 00 45 0F B6 E9 49 8B F8 4C 8B FA 48 8B F1";
     // The hire's actor lookup, lookup(manager, out, id), which leaves the
     // actor at out+8 and a found byte at out+0x10. The same body exists five
     // times in the exe, so the one the hire uses is taken from the hire's
@@ -205,17 +211,21 @@ namespace bm::sig
     // +0x272, +0x273 and +0x320. The E8 at +0x7E (after `lea
     // rcx,[rbp-38h]`) is +0x1611B90, which lets a lookup result go: it
     // releases the actor only while out+0x10 is set. The pattern starts at
-    // +0x8DE838.
+    // +0x8DE838. On 3663 it is at +0x90E02A, and the two stack slots moved
+    // ([rbp-78h] to [rbp-80h], [rbp-38h] to [rbp-50h]), so their bytes are
+    // wildcards; the pattern is unique on 3576 and 3663 alike.
     inline constexpr const char* kSig_CallCheck =
-        "45 8B 76 50 48 8B 4D 88 48 8B 01 B2 01 FF 50 20 45 8B C6 48 8D 55 C8 48 8B 0D ?? ?? ?? ?? 48 8B 49 28 "
+        "45 8B 76 50 48 8B 4D ?? 48 8B 01 B2 01 FF 50 20 45 8B C6 48 8D 55 ?? 48 8B 0D ?? ?? ?? ?? 48 8B 49 28 "
         "E8 ?? ?? ?? ?? 48 8B D0";
     inline constexpr unsigned kOff_CallCheck_Lookup = 0x22;
-    inline constexpr unsigned kOff_CallCheck_ReleaseSig = 0x7A;
-    inline constexpr const char* kSig_CallCheckRelease = "48 8D 4D C8 E8";
+    // `lea rcx,[rbp-50h]` on 3663, one byte nearer than 3576's +0x7A.
+    inline constexpr unsigned kOff_CallCheck_ReleaseSig = 0x79;
+    inline constexpr const char* kSig_CallCheckRelease = "48 8D 4D ?? E8";
     // `mov rcx,rbx; call +0x18C57E0`, the groggy test, which the game runs
     // under its own reader lock on [[status+8]+8]. The hook goes on the E8, 3
-    // bytes after the start of the pattern (+0x8DE937).
-    inline constexpr unsigned kOff_CallCheck_GroggySig = 0xFC;
+    // bytes after the start of the pattern (+0x8DE937; +0x90E124 on 3663,
+    // whose pattern is at +0xF7 where 3576's was at +0xFC).
+    inline constexpr unsigned kOff_CallCheck_GroggySig = 0xF7;
     inline constexpr const char* kSig_CallCheckGroggy = "48 8B CB E8";
     inline constexpr unsigned kOff_MountComp_Actor = 0x08;
     inline constexpr unsigned kOff_Status_DeadA = 0x292;

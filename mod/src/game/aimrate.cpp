@@ -11,7 +11,7 @@
 
 namespace
 {
-    // In the AimIK apply (+0x12E1B10 on 3576, 0x7C0 above 3527's +0x12E1350, which sat 0x1320 above 3479's +0x12E0030, which sat 0x50 below 3462's +0x12E0080,
+    // In the AimIK apply (+0x131F250 on 3663, the same code as +0x12E1B10 on 3576, 0x7C0 above 3527's +0x12E1350, which sat 0x1320 above 3479's +0x12E0030, which sat 0x50 below 3462's +0x12E0080,
     // 0x3110 above 3446's
     // +0x12DCF70, 0x3BA0 above 3424's +0x12DC4E0 and 0x4C90 above 3392's
     // +0x12DB3F0, the same code), with
@@ -29,9 +29,9 @@ namespace
     // game used one of the two spellings' hashes, so both are checked. The
     // broom's aim gets kRate on every frame and skips the pull; every other
     // aim IK runs the shipped instructions.
-    constexpr uintptr_t kRva_Site = 0x12E1E69;
-    constexpr uintptr_t kRva_Pull = 0x12E1E73;
-    constexpr uintptr_t kRva_Solve = 0x12E1EB3;
+    constexpr uintptr_t kRva_Site = 0x131F5A9;   // 0x12E1E69 on 3576
+    constexpr uintptr_t kRva_Pull = 0x131F5B3;   // 0x12E1E73 on 3576
+    constexpr uintptr_t kRva_Solve = 0x131F5F3;  // 0x12E1EB3 on 3576
     constexpr unsigned char kSite[] = { 0xC5, 0xF0, 0x57, 0xC9, 0xC5, 0xF8, 0x2F, 0xF9, 0x76, 0x40 };
     constexpr unsigned char kPullHead[] = { 0xC4, 0x41, 0x78, 0x2F, 0xC2 };
     constexpr float kRate = 1.0f;   // per second: a 90 degree swing is 90 percent done in 2.3 s

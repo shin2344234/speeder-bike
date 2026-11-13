@@ -9,10 +9,13 @@
 // never fires: the speeder stays on the ground. The first entry is the
 // Wyvern body chart's entry, whose last branch goes to the ground idle, not
 // the fly idle, so a speeder that arrives above the ground does not hang.
+// Chart 0 offsets follow exe 1.0.0.3663, whose m0004_dragon_upper.paac has 29
+// twelve-byte insertions after +0x8C72 (348 bytes); each row was moved past
+// them and checked against the shipped word.
 namespace bm::broomchart
 {
     inline constexpr HoverPatch kGroundPatches[] = {
-        { 0, 0x3071F, 0xA9D16F76, 0x622E5BEC },   // m0004_dragon_upper entry 866C7489 b2, the fly idle -> the ground idle
+        { 0, 0x3087B, 0xA9D16F76, 0x622E5BEC },   // m0004_dragon_upper entry 866C7489 b2, the fly idle -> the ground idle
         { 1, 0x0EA96, 0x04222200, 0x04222700 },   // m0004_ride_dragon_lower b1 -> 8D6C25B2
         { 1, 0x0EBAE, 0x04222200, 0x04222700 },   // m0004_ride_dragon_lower b6 -> 8AE6B609
         { 1, 0x0EC1E, 0x1E220F00, 0x1E222700 },   // m0004_ride_dragon_lower b8 -> 608F3105
