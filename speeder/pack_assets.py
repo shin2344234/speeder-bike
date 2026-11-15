@@ -169,6 +169,14 @@ def write(paths, game, data):
 
 
 def main():
+    # Everything that can fail on the inputs comes first, so a missing game
+    # folder or broom file leaves the old assets as they were.
+    made = {
+        MATERIAL: material(sys.argv[1]),
+        PREFAB: prefab(sys.argv[2]),
+        PREFAB_DATA: PREFAB_TEXT,
+    }
+    idle_meta = shipped_file(META + KLIFF_IDLE + ".paa_metabin")
     # mod/assets/sound is make_engine.py's.
     for top in ("character", "ui", "actionchart"):
         if os.path.isdir(os.path.join(ASSETS, top)):
@@ -183,12 +191,10 @@ def main():
             os.makedirs(os.path.dirname(dst), exist_ok=True)
             shutil.copyfile(src, dst)
             paths.append(game)
-    write(paths, MATERIAL, material(sys.argv[1]))
-    write(paths, PREFAB, prefab(sys.argv[2]))
-    write(paths, PREFAB_DATA, PREFAB_TEXT)
+    for game, data in made.items():
+        write(paths, game, data)
     for game, ours in ORCA_FILES.items():
         write(paths, game, open(os.path.join(FILES, *ours.split("/")), "rb").read())
-    idle_meta = shipped_file(META + KLIFF_IDLE + ".paa_metabin")
     for meta in ORCA_METAS:
         write(paths, meta, idle_meta)
     paths.sort()
