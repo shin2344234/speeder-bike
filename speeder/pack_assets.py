@@ -190,7 +190,14 @@ def main():
     paths = sorted([game for _src, game in copies] + list(made))
     if MESH not in paths or BROOM_MESH in paths:
         sys.exit("speeder/out/files has no broom mesh to rename; run build_mesh.py first.")
-    missing = [p for p in STAND_INS if p not in paths]
+    # Kliff's lean blend (make_blends.py) and his idle (build_rider.py) have no
+    # stand-in, so nothing else in this list would catch them missing.
+    own = [
+        "character/binary/motionblending/phm/orca_rider_move_ing.motionblending",
+        RIDER + "nor_std_idle_01.paa",
+        RIDER_LOD + "nor_std_idle_01_lod.paa",
+    ]
+    missing = [p for p in list(STAND_INS) + own if p not in paths]
     if missing:
         sys.exit("speeder/out/files lacks " + ", ".join(missing) + "; run the scripts that write them first.")
     # mod/assets/sound is make_engine.py's.
