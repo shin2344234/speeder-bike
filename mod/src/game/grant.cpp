@@ -384,7 +384,16 @@ namespace
             InterlockedExchange(&g_swapId, static_cast<LONG>(id));
         }
         const uint64_t r = g_hireOriginal(clan, error, actorId, flag, flag2);
-        if (!grant) return r;
+        if (!grant)
+        {
+            // Someone else's hire, such as Broomy's grant in the same server
+            // tick: a horse it took is owned now, so it is no candidate for
+            // the speeder. Consider skips owned horses from here on.
+            uint32_t err = 1;
+            if (id && error) bm::mem::Read32(reinterpret_cast<uintptr_t>(error), &err);
+            if (id && !err) InterlockedCompareExchange(&g_candidate, 0, static_cast<LONG>(id));
+            return r;
+        }
         InterlockedExchange(&g_swapId, 0);
         uint32_t err = 0;
         if (error) bm::mem::Read32(reinterpret_cast<uintptr_t>(error), &err);
