@@ -186,8 +186,28 @@ int main(int argc, char** argv)
             Expect(ListHas(sh, sb, 1000006, U32(3) + "\x4E\x51\x58"), "alone, VehicleSlot takes 78, 81 and 88");
         if (!strcmp(name, "characterinfo")) CheckSpeederRow(sh, sb, own);
         // `alone`: Broomy's builders are left out (they read another
-        // build's records until Broomy is ported to it).
-        if (alone) continue;
+        // build's records until Broomy is ported to it). The speeder's own
+        // rows are still checked on its own output.
+        if (alone)
+        {
+            if (!strcmp(name, "characterinfo"))
+            {
+                Expect(Has(sh, sb, 1900002), "alone, the speeder's row is there");
+                Expect(own.broomyRow >= 0, "alone, the speeder's row number is known for the grant");
+                Expect(bm::broomrows::ChartsClaimedBy().empty(), "alone, no shipped row names the speeder's chart groups");
+            }
+            else if (!strcmp(name, "mercenaryinfo"))
+                Expect(Has(sh, sb, 88), "alone, Vehicle_Speeder is there");
+            else if (!strcmp(name, "vehicleinfo"))
+                Expect(ListHas(sh, sb, 20001, U32(1900002)), "alone, the speeder's vehicle row names its map row");
+            else if (!strcmp(name, "uimaptextureinfo"))
+                Expect(Has(sh, sb, 1900002), "alone, the speeder's map row is there");
+            else if (!strcmp(name, "uifiltergroupinfo"))
+                Expect(ListHas(sh, sb, 1000015, U32(1900002)), "alone, Group_Invisible lists the speeder's map row");
+            else if (!strcmp(name, "characterappearanceindexinfo"))
+                Expect(Has(sh, sb, 1900002, -2), "alone, the speeder's appearance row is there");
+            continue;
+        }
 
         // Broomy, then the speeder.
         std::string bh = h, bb = b;
