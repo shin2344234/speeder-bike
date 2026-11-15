@@ -177,6 +177,10 @@ def main():
         PREFAB_DATA: PREFAB_TEXT,
     }
     idle_meta = shipped_file(META + KLIFF_IDLE + ".paa_metabin")
+    needed = [BROOM_MESH] + list(ORCA_FILES.values())
+    absent = [p for p in needed if not os.path.isfile(os.path.join(FILES, *p.split("/")))]
+    if absent:
+        sys.exit("speeder/out/files lacks " + ", ".join(absent) + "; run build_mesh.py and build_rider.py first.")
     # mod/assets/sound is make_engine.py's.
     for top in ("character", "ui", "actionchart"):
         if os.path.isdir(os.path.join(ASSETS, top)):
