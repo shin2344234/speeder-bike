@@ -53,6 +53,11 @@ namespace
     struct Seen { uintptr_t clan; uintptr_t array; };
     Seen  g_seen[1];
     int   g_seenCount = 0;
+    // The roster the call-check hooks clear an entry in. g_seen and
+    // g_seenCount belong to the mod thread; the hooks run on game threads and
+    // read only this, which RosterHas publishes once a scan is done.
+    volatile uintptr_t g_seenClan = 0;
+    void PublishSeen(uintptr_t clan) { InterlockedExchangePointer(reinterpret_cast<void* volatile*>(&g_seenClan), reinterpret_cast<void*>(clan)); }
     DWORD g_watchAt = 0;
 
     // The grant, armed by a check that found no Broomy.
@@ -300,7 +305,7 @@ namespace
         static uint8_t last[0x100];
         static bool logged = false;
         const int row = bm::broomy::Row();
-        const uintptr_t clan = g_seenCount ? g_seen[0].clan : 0;
+        const uintptr_t clan = g_seenClan;
         uint32_t count = 0;
         uintptr_t arr = 0;
         if (row < 0 || !clan || !bm::mem::Read32(clan + kOff_Clan_Count, &count) ||
@@ -430,9 +435,16 @@ namespace
     bool RosterHas(int row, int& rosters)
     {
         rosters = 0;
-        g_seenCount = 0;
+        // Built here and published at the end: the hooks keep the last scan's
+        // roster while this one runs, which takes a second or two.
+        Seen best = {};
         uintptr_t vt[2] = {};
-        if (bm::mem::FindVtablesByName(kRtti_ServerClan, vt, 2) != 1) return false;
+        if (bm::mem::FindVtablesByName(kRtti_ServerClan, vt, 2) != 1)
+        {
+            g_seenCount = 0;
+            PublishSeen(0);
+            return false;
+        }
         uintptr_t hits[64];
         int found = 0;
         MEMORY_BASIC_INFORMATION mbi;
@@ -460,8 +472,7 @@ namespace
             if (count > largest)
             {
                 largest = count;
-                g_seen[0] = { hits[i], arr };
-                g_seenCount = 1;
+                best = { hits[i], arr };
             }
             for (uint32_t k = 0; k < count && !has; ++k)
             {
@@ -472,6 +483,9 @@ namespace
                     has = true;
             }
         }
+        g_seen[0] = best;
+        g_seenCount = best.clan ? 1 : 0;
+        PublishSeen(best.clan);
         return has;
     }
 
@@ -545,7 +559,8 @@ namespace
             InterlockedExchange(&g_lookedAt, static_cast<LONG>(GetTickCount() | 1));
             return r;
         }
-        const bool stored = g_seenCount && StoreBroomy(g_seen[0].clan, static_cast<uint32_t>(id));
+        const uintptr_t clan = g_seenClan;
+        const bool stored = clan && StoreBroomy(clan, static_cast<uint32_t>(id));
         if (!stored)
         {
             LOG_ERR("[faint] the speeder (actor %08X) is down at the call (+0x292 %u, +0x293 %u, +0x340 %d), but its "
@@ -595,7 +610,8 @@ namespace
         InterlockedExchange(&g_outAtCall, 0);   // this call is refused, so nothing follows to send twice
         uint32_t groggyValue = 0;
         bm::mem::Read32(status + kOff_Status_Groggy, &groggyValue);
-        if (id && g_seenCount && StoreBroomy(g_seen[0].clan, id))
+        const uintptr_t clan = g_seenClan;
+        if (id && clan && StoreBroomy(clan, id))
         {
             InterlockedExchange(&g_clearedId, static_cast<LONG>(id));
             InterlockedExchange(&g_clearedAt, static_cast<LONG>(GetTickCount() | 1));
@@ -710,6 +726,7 @@ namespace bm::grant
             if (mem::FindVtablesByName(kRtti_ServerClan, vt, 2) == 1 && RostersChanged(vt[0]))
             {
                 g_seenCount = 0;
+                PublishSeen(0);
                 InterlockedExchange(&g_armed, 0);
                 InterlockedExchange(&g_loadedAt, static_cast<LONG>(now0));
                 InterlockedIncrement(&g_loadSeq);
