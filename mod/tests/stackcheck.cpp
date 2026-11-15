@@ -56,6 +56,16 @@ namespace
         if (!ok) ++g_failed;
     }
 
+    // An input the checks below need. A missing one is a failure, so a
+    // short IN folder cannot pass by skipping them.
+    bool Need(const std::string& path, std::string& out)
+    {
+        if (Load(path, out)) return true;
+        printf("%-30s FAILED: missing\n", path.c_str());
+        ++g_failed;
+        return false;
+    }
+
     bool Has(const std::string& h, const std::string& b, uint64_t key, int32_t tag = 0)
     {
         bm::tablefile::Table t;
@@ -245,13 +255,13 @@ int main(int argc, char** argv)
     }
 
     std::string paloc, wyvern, portraits, out, why;
-    if (Load(in + "character.paloc", paloc))
+    if (Need(in + "character.paloc", paloc))
     {
         std::string withBroomy;
         const bool a = bm::broomyrows::BuildPaloc(paloc, withBroomy, why);
         Expect(a && bm::broomrows::BuildPaloc(withBroomy, out, why), "character.paloc names both");
     }
-    if (Load(in + "cd_image_portrait_00.xml", portraits))
+    if (Need(in + "cd_image_portrait_00.xml", portraits))
     {
         std::string withBroomy;
         const bool a = bm::broomyrows::BuildPortraits(portraits, withBroomy, why);
@@ -261,7 +271,7 @@ int main(int argc, char** argv)
                "the portrait list names both");
     }
     std::string icons;
-    if (Load(in + "cd_icon_map_03.xml", icons))
+    if (Need(in + "cd_icon_map_03.xml", icons))
         Expect(bm::broomrows::BuildMapTextures(icons, out, why) &&
                    out.find("Name=\"cd_Icon_map_Speeder\" Filename=\"UI/texture/cd_icon_map_speeder.dds\"") !=
                        std::string::npos,
@@ -320,11 +330,11 @@ int main(int argc, char** argv)
                    what);
         }
     }
-    if (Load(in + "mon_wyvern.xml", wyvern))
+    if (Need(in + "mon_wyvern.xml", wyvern))
         Expect(bm::broomrows::BuildDescription(wyvern, out, why), "the speeder's description builds");
 
     std::string desc, report;
-    if (Load(in + "characteractionpackagedescription.paacdesc", desc))
+    if (Need(in + "characteractionpackagedescription.paacdesc", desc))
     {
         std::string withBroomy, alone;
         const bool a = bm::broomychart::BuildPackageDesc(desc, withBroomy, report, why);
@@ -338,7 +348,7 @@ int main(int argc, char** argv)
     const char* sources[] = { "m0004_dragon_upper.paac", "m0004_ride_dragon_lower.paac", "m0004_ride_dragon_upper.paac" };
     std::string charts[bm::broomchart::kChartCount], made[bm::broomchart::kChartCount];
     bool read = true;
-    for (int c = 0; c < bm::broomchart::kChartCount; ++c) read = Load(in + sources[c], charts[c]) && read;
+    for (int c = 0; c < bm::broomchart::kChartCount; ++c) read = Need(in + sources[c], charts[c]) && read;
     if (read)
     {
         bm::broomchart::Aliases aliases;
