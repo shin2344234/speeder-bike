@@ -94,7 +94,11 @@ endif()
 # The speeder's tables and package list on top of Broomy's, with Broomy's
 # own builders from its source, built apart so they see only Broomy's
 # headers: build.bat stackcheck IN.
+# Without Broomy's source the plugin and the other checks still build.
 set(BROOMY_SRC "${CMAKE_SOURCE_DIR}/../../Broomy/mod/src" CACHE PATH "Broomy's mod/src, for stackcheck")
+if(NOT EXISTS "${BROOMY_SRC}/game/broomrows.cpp")
+    message(STATUS "No Broomy source at ${BROOMY_SRC}, so there is no stackcheck target. Set BROOMY_SRC to add it.")
+else()
 add_library(broomyref STATIC EXCLUDE_FROM_ALL
     "${BROOMY_SRC}/game/broomrows.cpp"
     "${BROOMY_SRC}/game/broomchart.cpp"
@@ -116,6 +120,7 @@ target_compile_definitions(stackcheck PRIVATE _CRT_SECURE_NO_WARNINGS
     "BROOMY_ROWS_H=\"${BROOMY_SRC}/game/broomrows.h\""
     "BROOMY_CHART_H=\"${BROOMY_SRC}/game/broomchart.h\"")
 target_compile_options(stackcheck PRIVATE /utf-8 /W3)
+endif()
 
 # The offline check of Broomy's charts: build.bat chartcheck IN OUT.
 add_executable(chartcheck EXCLUDE_FROM_ALL
