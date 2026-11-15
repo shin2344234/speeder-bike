@@ -76,7 +76,7 @@ add_library(SpeederBike SHARED
 set_source_files_properties(src/resources.rc PROPERTIES OBJECT_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/SpeederBike.ini")
 # The speeder's files (src/speeder.rc, from speeder/pack_assets.py).
-file(GLOB_RECURSE BM_SPEEDER_ASSETS "${CMAKE_CURRENT_SOURCE_DIR}/assets/*")
+file(GLOB_RECURSE BM_SPEEDER_ASSETS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/assets/*")
 set_source_files_properties(src/speeder.rc PROPERTIES OBJECT_DEPENDS "${BM_SPEEDER_ASSETS}")
 
 target_include_directories(SpeederBike PRIVATE src "${CMAKE_CURRENT_BINARY_DIR}/generated" ${minhook_SOURCE_DIR}/src/hde)
