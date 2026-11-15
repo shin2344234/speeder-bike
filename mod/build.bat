@@ -31,6 +31,7 @@ if not exist "%HERE%build\build.ninja" (
 if "%1"=="stackcheck" goto check
 if "%1"=="riderfind" goto check
 if "%1"=="soundcheck" goto check
+if "%1"=="chartcheck" goto check
 "%CMAKE%" --build "%HERE%build"
 if errorlevel 1 exit /b 1
 echo.
