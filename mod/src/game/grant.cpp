@@ -164,18 +164,9 @@ namespace
     }
 
     // Is the actor this lookup found one the hire takes (kind 4 to 6, no
-    // owner), and a horse? Runs on the game's thread inside its own lookup,
-    // so at most a few hundred a second are looked at.
-    void Consider(uintptr_t out, uint32_t id)
+    // owner), and a horse? Sets g_candidateRow when it is.
+    bool Qualifies(uintptr_t out)
     {
-        if (!id || static_cast<LONG>(id) == g_candidate || Rejected(static_cast<LONG>(id))) return;
-        const LONG now = static_cast<LONG>(GetTickCount() / 1000);
-        if (g_checkWindow != now)
-        {
-            InterlockedExchange(&g_checkWindow, now);
-            InterlockedExchange(&g_checks, 0);
-        }
-        if (InterlockedIncrement(&g_checks) > 300) return;
         uint8_t found = 0, kind = 0;
         uintptr_t actor = 0, kindObj = 0, block = 0, status = 0, owner = 0;
         uint32_t ownerId = 1;
@@ -187,9 +178,33 @@ namespace
             !bm::mem::ReadPtr(actor + kOff_Actor_Block, &block) || !bm::mem::ReadPtr(block + kOff_Block_Owner, &owner) ||
             !bm::mem::Read32(owner + kOff_Owner_Id, &ownerId) || ownerId != 0 ||
             !bm::mem::ReadPtr(block + kOff_Block_Status, &status) || !bm::mem::Read16(status + kOff_Status_CharRow, &row))
-            return;
-        if (bm::broomy::MercenaryKey(row) != kHorseList) return;
+            return false;
+        if (bm::broomy::MercenaryKey(row) != kHorseList) return false;
         InterlockedExchange(&g_candidateRow, row);
+        return true;
+    }
+
+    // Notes a wild horse the hire can take. Runs on the game's thread inside
+    // its own lookup, so at most a few hundred a second are looked at.
+    void Consider(uintptr_t out, uint32_t id)
+    {
+        if (!id || Rejected(static_cast<LONG>(id))) return;
+        const LONG now = static_cast<LONG>(GetTickCount() / 1000);
+        if (g_checkWindow != now)
+        {
+            InterlockedExchange(&g_checkWindow, now);
+            InterlockedExchange(&g_checks, 0);
+        }
+        if (InterlockedIncrement(&g_checks) > 300) return;
+        // The candidate is looked at again too: Broomy's grant hires in the
+        // same server tick, before the speeder's, and its hire looks the horse
+        // up with Broomy's row already written in, so a horse Broomy took
+        // stops passing here and is dropped before the speeder tries it.
+        if (!Qualifies(out))
+        {
+            InterlockedCompareExchange(&g_candidate, 0, static_cast<LONG>(id));
+            return;
+        }
         InterlockedExchange(&g_candidate, static_cast<LONG>(id));
     }
 
@@ -384,16 +399,7 @@ namespace
             InterlockedExchange(&g_swapId, static_cast<LONG>(id));
         }
         const uint64_t r = g_hireOriginal(clan, error, actorId, flag, flag2);
-        if (!grant)
-        {
-            // Someone else's hire, such as Broomy's grant in the same server
-            // tick: a horse it took is owned now, so it is no candidate for
-            // the speeder. Consider skips owned horses from here on.
-            uint32_t err = 1;
-            if (id && error) bm::mem::Read32(reinterpret_cast<uintptr_t>(error), &err);
-            if (id && !err) InterlockedCompareExchange(&g_candidate, 0, static_cast<LONG>(id));
-            return r;
-        }
+        if (!grant) return r;
         InterlockedExchange(&g_swapId, 0);
         uint32_t err = 0;
         if (error) bm::mem::Read32(reinterpret_cast<uintptr_t>(error), &err);
