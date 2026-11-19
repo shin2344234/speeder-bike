@@ -1,8 +1,11 @@
 #pragma once
 #include <cstdint>
 
-// Byte patterns and layouts for Crimson Desert exe 1.0.0.3663 (13 November
-// 2026). 3424, 3446, 3460, 3462, 3479, 3527 and 3576 are 3392's code moved: every
+// Byte patterns and layouts for Crimson Desert exe 1.0.0.3732 (Steam build
+// 26776744, 19 November 2026). 3732 is 3663's code moved: every pattern
+// below still finds one hit and the offsets hold, and only the fixed
+// addresses changed (patch-dlc/catalog/3732/speeder-bike.md). Before that,
+// exe 1.0.0.3663 (13 November 2026). 3424, 3446, 3460, 3462, 3479, 3527 and 3576 are 3392's code moved: every
 // function the plugin uses compares equal once addresses are masked
 // (patch-dlc/work/speeder-bike/3392/tools/relocate.py and asmdiff.py), so
 // the offsets in the comments below are still 3392's unless they say 3424.
@@ -16,17 +19,19 @@
 
 namespace bm::sig
 {
-    // Where each hooked entry is on exe 1.0.0.3663, for farhook::Locate:
+    // Where each hooked entry is on exe 1.0.0.3732, for farhook::Locate:
     // Broomy.asi hooks the same entries first, and a pattern that starts at
-    // an entry no longer matches once a hook is on it. 3576's in comments.
-    inline constexpr uintptr_t kRva_LoaderFindSource = 0x14EEB50;     // 0x14AFC30
-    inline constexpr uintptr_t kRva_LoaderIndexOf = 0x14F00F0;         // 0x14B11D0
-    inline constexpr uintptr_t kRva_LoaderExists = 0x14F0160;          // 0x14B1240
-    inline constexpr uintptr_t kRva_ResourceRead = 0x14EEDF0;          // 0x14AFED0
-    inline constexpr uintptr_t kRva_AppearanceLoad = 0x269E6D0;        // 0x262FCC0
-    inline constexpr uintptr_t kRva_SendRequest = 0x3A9960;            // 0x3A6310
-    inline constexpr uintptr_t kRva_ServerHire = 0x2EB77A0;            // 0x2E4F970
-    inline constexpr uintptr_t kRva_ServerMoveHandler = 0x2C53270;     // 0x2BED7D0
+    // an entry no longer matches once a hook is on it. 3663's and 3576's in
+    // comments. On 3732 with the 3663 values, Broomy hid the patterns and
+    // the stale addresses held no jump, so the speeder was not served.
+    inline constexpr uintptr_t kRva_LoaderFindSource = 0x14F06D0;     // 0x14EEB50, 0x14AFC30
+    inline constexpr uintptr_t kRva_LoaderIndexOf = 0x14F1C70;         // 0x14F00F0, 0x14B11D0
+    inline constexpr uintptr_t kRva_LoaderExists = 0x14F1CE0;          // 0x14F0160, 0x14B1240
+    inline constexpr uintptr_t kRva_ResourceRead = 0x14F0970;          // 0x14EEDF0, 0x14AFED0
+    inline constexpr uintptr_t kRva_AppearanceLoad = 0x26A0E30;        // 0x269E6D0, 0x262FCC0
+    inline constexpr uintptr_t kRva_SendRequest = 0x3A9D70;            // 0x3A9960, 0x3A6310
+    inline constexpr uintptr_t kRva_ServerHire = 0x2EBBF00;            // 0x2EB77A0, 0x2E4F970
+    inline constexpr uintptr_t kRva_ServerMoveHandler = 0x2C57D00;     // 0x2C53270, 0x2BED7D0
 
     // ---- Files -------------------------------------------------------------
 
