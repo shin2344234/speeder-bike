@@ -76,6 +76,12 @@ namespace bm::broomrows
         constexpr uint32_t kIbexMapTexture = 5347;
         constexpr const char* kIbexMapName = "Actor_Vehicle_AlpineIbex_Hired";
         constexpr const char* kIbexMapComponent = "MapIcon_ActorVehicleAlpineIbex_Hired";
+        // 3840 draws the hired mounts' icons from one component, MapIcon_ActorMount, which the markup says is
+        // used as "MapIcon_ActorMount(VehicleHorse Hired)": a property per kind of mount, and Hired for a hired
+        // one. The ibex row's _uiTemplateName there is the hash of "MapIcon_ActorMount(VehicleAlpineIbex Hired)"
+        // (D5673015), as the Horse, Bear and Wyvern rows' are of theirs.
+        constexpr const char* kIbexMapMount = "MapIcon_ActorMount(VehicleAlpineIbex Hired)";
+        constexpr const char* kMapMount = "MapIcon_ActorMount(VehicleSpeeder Hired)";
         constexpr const char* kMapName = "Actor_Vehicle_Speeder_Hired";
         constexpr const char* kMapComponent = "MapIcon_ActorVehicleSpeeder_Hired";
         constexpr const char* kIbexMapImage = "textureid(cd_Icon_map_AlpineIbex)";
@@ -108,7 +114,11 @@ namespace bm::broomrows
         // start there; _vehicleInfo, a u16; _mercenaryInfo, a u8. Everything
         // from the key to past _mercenaryInfo is fixed in size (the memo,
         // a text on 2976, is now a string key).
-        constexpr size_t kHirableAt = 10, kVehicleAt = 0xCF, kMercAt = 0xD7;
+        // Exe 3840 put a u16 after _statChangeInfoWrapper, 95 bytes after the key and before both of these, so
+        // _vehicleInfo and _mercenaryInfo sit 2 bytes later there (check_tables3840.py walks all 7,315 rows).
+        constexpr size_t kHirableAt = 10, kVehicleAt = 0xCF, kMercAt = 0xD7, kNewLayoutShift = 2;
+        size_t VehicleAt(const tablefile::Table& t) { return kVehicleAt + (t.NewLayout() ? kNewLayoutShift : 0); }
+        size_t MercAt(const tablefile::Table& t) { return kMercAt + (t.NewLayout() ? kNewLayoutShift : 0); }
         constexpr uint32_t kNameSub = 0x30, kHireSub = 0x32;
 
         uint32_t Key(const char* text) { return bm::hash::Little(text); }
@@ -218,8 +228,8 @@ namespace bm::broomrows
             {
                 const std::string& rec = t.RecordAt(row);
                 const size_t base = AfterKey(rec, t.KeyAt(row).key);
-                if (base != std::string::npos && base + kMercAt < rec.size())
-                    out[row] = static_cast<uint8_t>(rec[base + kMercAt]);
+                if (base != std::string::npos && base + MercAt(t) < rec.size())
+                    out[row] = static_cast<uint8_t>(rec[base + MercAt(t)]);
             }
         }
 
@@ -323,14 +333,15 @@ namespace bm::broomrows
             }
 
             // _vehicleInfo and _mercenaryInfo, at their fixed places.
-            if (base + kMercAt >= rec.size() || Peek<uint16_t>(rec, base + kVehicleAt) != kIbexVehicle ||
-                static_cast<uint8_t>(rec[base + kMercAt]) != kSpecialMerc)
+            const size_t vehicleAt = VehicleAt(t), mercAt = MercAt(t);
+            if (base + mercAt >= rec.size() || Peek<uint16_t>(rec, base + vehicleAt) != kIbexVehicle ||
+                static_cast<uint8_t>(rec[base + mercAt]) != kSpecialMerc)
             {
                 why = "the ibex row's vehicle or mercenary list is not where 3392 puts it";
                 return false;
             }
-            Poke<uint16_t>(rec, base + kVehicleAt, kVehicleKey);
-            rec[base + kMercAt] = static_cast<char>(kMercKey);
+            Poke<uint16_t>(rec, base + vehicleAt, kVehicleKey);
+            rec[base + mercAt] = static_cast<char>(kMercKey);
             // _callMercenaryCoolTime, u64 seconds. Under _mercenaryCoolTimeType
             // 1 it is how long a fainted mount cannot be called ("Cannot summon
             // because it's fainted"). One second rather than 0 keeps the timer,
@@ -563,8 +574,8 @@ namespace bm::broomrows
             std::string rec = *src;
             Poke<uint32_t>(rec, old.size(), kBroomyKey);
             rec.replace(0, old.size(), NameBlock(kMapName));
-            if (!Splice(rec, Bytes<uint32_t>(Key(kIbexMapComponent)), Bytes<uint32_t>(Key(kMapComponent)),
-                        "the ibex's map component", why))
+            if (!Splice(rec, Bytes<uint32_t>(Key(t.NewLayout() ? kIbexMapMount : kIbexMapComponent)),
+                        Bytes<uint32_t>(Key(t.NewLayout() ? kMapMount : kMapComponent)), "the ibex's map component", why))
                 return false;
             int strings = 0;
             for (uint32_t sub = 0x190; sub < 0x1A0; ++sub)
@@ -607,6 +618,14 @@ namespace bm::broomrows
         {
             constexpr uint32_t kGroup = 1000015;
             const std::string* src = t.Record(kGroup);
+            // 3840 has no Group_Invisible and keeps no map rows in its groups. A map row names its group itself,
+            // in the u32 before _mapIconType, which the speeder's row copies from the ibex's, so the table stays.
+            if (!src && t.NewLayout())
+            {
+                report = "uifiltergroupinfo: 3840 keeps no map rows in its groups (the speeder's row names the "
+                         "ibex's group itself), left as it is";
+                return true;
+            }
             const std::string name = NameBlock("Group_Invisible");
             const size_t countAt = name.size() + 4 + 10, list = countAt + 4;
             if (!src || src->size() < list || src->compare(0, name.size(), name) != 0 ||
@@ -688,7 +707,7 @@ namespace bm::broomrows
     {
         tablefile::Table t;
         std::string parse;
-        if (!t.Parse(header, body, parse))
+        if (!t.Parse(header, body, parse, name))
         {
             why = std::string("the shipped table does not parse: ") + parse;
             return false;
@@ -812,6 +831,29 @@ namespace bm::broomrows
         }
         if (markup)
         {
+            // 3840: the hired mounts share one component that picks the icon by a property per mount
+            // (<OverrideByProperty PropertyCondition="VehicleAlpineIbex" ... css="icon-image-AlpineIbex ...">). The
+            // ibex's line, copied after itself for "VehicleSpeeder", is all the speeder needs, with the class
+            // lines of the style sheets.
+            if (game.find(std::string("<component name=\"") + kIbexMapComponent + "\"") == std::string::npos)
+            {
+                const std::string prop = "PropertyCondition=\"VehicleAlpineIbex\"";
+                const size_t at = game.find(prop);
+                if (at == std::string::npos || game.find(prop, at + 1) != std::string::npos)
+                {
+                    why = "it has neither a component for the hired ibex nor one property line for it";
+                    return false;
+                }
+                const size_t from = game.rfind('\n', at) + 1;   // npos + 1 is 0
+                size_t to = game.find('\n', at);
+                to = to == std::string::npos ? game.size() : to + 1;
+                std::string line = game.substr(from, to - from);
+                if (line.empty() || line.back() != '\n') line += '\n';
+                out.assign(game, 0, to);
+                out += Replaced(line, "AlpineIbex", "Speeder");
+                out.append(game, to, std::string::npos);
+                return true;
+            }
             // The ibex's component, copied after itself as the speeder's.
             const size_t start = game.find(std::string("<component name=\"") + kIbexMapComponent + "\"");
             const size_t close = start == std::string::npos ? start : game.find("</component>", start);

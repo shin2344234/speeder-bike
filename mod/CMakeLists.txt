@@ -102,9 +102,11 @@ else()
 add_library(broomyref STATIC EXCLUDE_FROM_ALL
     "${BROOMY_SRC}/game/broomrows.cpp"
     "${BROOMY_SRC}/game/broomchart.cpp"
+    "${BROOMY_SRC}/game/chartwalk.cpp"
 )
 target_include_directories(broomyref PRIVATE "${BROOMY_SRC}")
-target_compile_definitions(broomyref PRIVATE broomrows=broomyrows broomchart=broomychart _CRT_SECURE_NO_WARNINGS)
+target_compile_definitions(broomyref PRIVATE broomrows=broomyrows broomchart=broomychart chartwalk=broomychartwalk
+    _CRT_SECURE_NO_WARNINGS)
 target_compile_options(broomyref PRIVATE /utf-8 /W3)
 add_executable(stackcheck EXCLUDE_FROM_ALL
     tests/stackcheck.cpp

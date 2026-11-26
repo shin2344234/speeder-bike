@@ -66,6 +66,13 @@ namespace
         return false;
     }
 
+    bool NewLayout(const std::string& h, const std::string& b)
+    {
+        bm::tablefile::Table t;
+        std::string why;
+        return t.Parse(h, b, why) && t.NewLayout();
+    }
+
     bool Has(const std::string& h, const std::string& b, uint64_t key, int32_t tag = 0)
     {
         bm::tablefile::Table t;
@@ -109,8 +116,10 @@ namespace
         const std::string& r = *rec;
         const size_t base = name.size() + 4;
         uint16_t vehicle = 0;
-        memcpy(&vehicle, r.data() + base + 0xCF, 2);
-        Expect(vehicle == 20001 && static_cast<uint8_t>(r[base + 0xD7]) == 88 && r[base + 10] == 1,
+        // 3840 put a u16 after _statChangeInfoWrapper, ahead of both fields.
+        const size_t shift = t.NewLayout() ? 2 : 0;
+        memcpy(&vehicle, r.data() + base + 0xCF + shift, 2);
+        Expect(vehicle == 20001 && static_cast<uint8_t>(r[base + 0xD7 + shift]) == 88 && r[base + 10] == 1,
                "its vehicle row is 20001, its mercenary list 88, and it is hirable");
         const auto key = [](const char* s) { return U32(bm::hash::Little(s)); };
         Expect(Count(r, key(bm::broomchart::kLowerGroup) + key(bm::broomchart::kUpperGroup)) == 1 &&
@@ -203,7 +212,13 @@ int main(int argc, char** argv)
             else if (!strcmp(name, "uimaptextureinfo"))
                 Expect(Has(sh, sb, 1900002), "alone, the speeder's map row is there");
             else if (!strcmp(name, "uifiltergroupinfo"))
-                Expect(ListHas(sh, sb, 1000015, U32(1900002)), "alone, Group_Invisible lists the speeder's map row");
+            {
+                // 3840 has no Group_Invisible: a map row names its group itself.
+                if (NewLayout(sh, sb))
+                    Expect(!Has(sh, sb, 1000015), "alone, 3840 keeps no map rows in its groups and the table is built");
+                else
+                    Expect(ListHas(sh, sb, 1000015, U32(1900002)), "alone, Group_Invisible lists the speeder's map row");
+            }
             else if (!strcmp(name, "characterappearanceindexinfo"))
                 Expect(Has(sh, sb, 1900002, -2), "alone, the speeder's appearance row is there");
             continue;
@@ -265,8 +280,13 @@ int main(int argc, char** argv)
             Expect(Has(th, tb, 1900002), "the speeder's map row is there");
         }
         else if (!strcmp(name, "uifiltergroupinfo"))
-            Expect(ListHas(th, tb, 1000015, U32(1900001)) && ListHas(th, tb, 1000015, U32(1900002)),
-                   "Group_Invisible lists both map rows");
+        {
+            if (NewLayout(th, tb))
+                Expect(!Has(th, tb, 1000015), "3840 keeps no map rows in its groups and the table is built");
+            else
+                Expect(ListHas(th, tb, 1000015, U32(1900001)) && ListHas(th, tb, 1000015, U32(1900002)),
+                       "Group_Invisible lists both map rows");
+        }
         else if (!strcmp(name, "characterappearanceindexinfo"))
         {
             Expect(Has(th, tb, 1900001, -2), "Broomy's appearance row is still there");
@@ -315,7 +335,10 @@ int main(int argc, char** argv)
         };
         const bool a = build(false, game, withBroomy);
         const bool b = a && build(true, withBroomy, out);
-        const std::string drawn = m < 2 || binary ? "MapIcon_ActorVehicleSpeeder_Hired" : "textureid(cd_Icon_map_Speeder)";
+        // 3840's markup draws a mount by a property line, not a component of its own.
+        const bool byProperty = m < 2 && game.find("MapIcon_ActorVehicleAlpineIbex_Hired") == std::string::npos;
+        const std::string drawn = byProperty ? "PropertyCondition=\"VehicleSpeeder\""
+                                  : m < 2 || binary ? "MapIcon_ActorVehicleSpeeder_Hired" : "textureid(cd_Icon_map_Speeder)";
         char what[160];
         snprintf(what, sizeof what, "%s draws Broomy and the speeder", file);
         if (!b) printf("         %s\n", why.c_str());
