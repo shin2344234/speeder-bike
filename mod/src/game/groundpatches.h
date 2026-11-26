@@ -15,31 +15,31 @@
 namespace bm::broomchart
 {
     inline constexpr HoverPatch kGroundPatches[] = {
-        { 0, 0x3087B, 0xA9D16F76, 0x622E5BEC },   // m0004_dragon_upper entry 866C7489 b2, the fly idle -> the ground idle
-        { 1, 0x0EA96, 0x04222200, 0x04222700 },   // m0004_ride_dragon_lower b1 -> 8D6C25B2
-        { 1, 0x0EBAE, 0x04222200, 0x04222700 },   // m0004_ride_dragon_lower b6 -> 8AE6B609
-        { 1, 0x0EC1E, 0x1E220F00, 0x1E222700 },   // m0004_ride_dragon_lower b8 -> 608F3105
-        { 1, 0x0EC56, 0x1E222200, 0x1E222700 },   // m0004_ride_dragon_lower b9 -> 968E1E3C
-        { 1, 0x0ECC6, 0x1E222200, 0x1E222700 },   // m0004_ride_dragon_lower b11 -> 7235DF7D
-        { 1, 0x0ECFE, 0x1E222200, 0x1E222700 },   // m0004_ride_dragon_lower b12 -> 7235DF7D
-        { 1, 0x0ED36, 0x1E222200, 0x1E222700 },   // m0004_ride_dragon_lower b13 -> 2B1E3C7C
-        { 1, 0x0ED6E, 0x1E222200, 0x1E222700 },   // m0004_ride_dragon_lower b14 -> E066175D
-        { 1, 0x0EDA6, 0x1E222200, 0x1E222700 },   // m0004_ride_dragon_lower b15 -> E066175D
-        { 1, 0x0EDDE, 0x1E221000, 0x1E222700 },   // m0004_ride_dragon_lower b16 -> 8D6C25B2
-        { 1, 0x0EE16, 0x1E221000, 0x1E222700 },   // m0004_ride_dragon_lower b17 -> 8AE6B609
-        { 1, 0x0EE4E, 0x04222200, 0x04222700 },   // m0004_ride_dragon_lower b18 -> 117F8F51
-        { 1, 0x0EE86, 0x1E220F00, 0x1E222700 },   // m0004_ride_dragon_lower b19 -> 117F8F51
-        { 1, 0x0EEBE, 0x1E220F00, 0x1E222700 },   // m0004_ride_dragon_lower b20 -> 117F8F51
-        { 1, 0x0F3C6, 0x1E222200, 0x1E222700 },   // m0004_ride_dragon_lower b43 -> 570E1E87
-        { 1, 0x0F3FE, 0x1E222200, 0x1E222700 },   // m0004_ride_dragon_lower b44 -> 38BD703A
-        { 2, 0x0BF65, 0x1E222200, 0x1E222700 },   // m0004_ride_dragon_upper b0 -> 117F8F51
-        { 2, 0x0C275, 0x1E222200, 0x1E222700 },   // m0004_ride_dragon_upper b14 -> E066175D
-        { 2, 0x0C2E5, 0x1E220F00, 0x1E222700 },   // m0004_ride_dragon_upper b16 -> E066175D
-        { 2, 0x0C31D, 0x1E222200, 0x1E222700 },   // m0004_ride_dragon_upper b17 -> E066175D
-        { 2, 0x0C515, 0x1E222200, 0x1E222700 },   // m0004_ride_dragon_upper b26 -> E066175D
-        { 2, 0x0C54D, 0x04220F00, 0x04222700 },   // m0004_ride_dragon_upper b27 -> 117F8F51
-        { 2, 0x0D155, 0x1E222200, 0x1E222700 },   // m0004_ride_dragon_upper b82 -> 5FF14EB6
-        { 2, 0x0D1C5, 0x1E222200, 0x1E222700 },   // m0004_ride_dragon_upper b84 -> 5FF14EB6
-        { 2, 0x0D235, 0x1E220F00, 0x1E222700 },   // m0004_ride_dragon_upper b86 -> 117F8F51
+        { 0, 0x30865, 0xA9D16F76, 0x622E5BEC },   // m0004_dragon_upper entry 866C7489 b2, the fly idle -> the ground idle
+        { 1, 0x0EA80, 0x04222200, 0x04222700 },   // m0004_ride_dragon_lower b1 -> 8D6C25B2
+        { 1, 0x0EB98, 0x04222200, 0x04222700 },   // m0004_ride_dragon_lower b6 -> 8AE6B609
+        { 1, 0x0EC08, 0x1E220F00, 0x1E222700 },   // m0004_ride_dragon_lower b8 -> 608F3105
+        { 1, 0x0EC40, 0x1E222200, 0x1E222700 },   // m0004_ride_dragon_lower b9 -> 968E1E3C
+        { 1, 0x0ECB0, 0x1E222200, 0x1E222700 },   // m0004_ride_dragon_lower b11 -> 7235DF7D
+        { 1, 0x0ECE8, 0x1E222200, 0x1E222700 },   // m0004_ride_dragon_lower b12 -> 7235DF7D
+        { 1, 0x0ED20, 0x1E222200, 0x1E222700 },   // m0004_ride_dragon_lower b13 -> 2B1E3C7C
+        { 1, 0x0ED58, 0x1E222200, 0x1E222700 },   // m0004_ride_dragon_lower b14 -> E066175D
+        { 1, 0x0ED90, 0x1E222200, 0x1E222700 },   // m0004_ride_dragon_lower b15 -> E066175D
+        { 1, 0x0EDC8, 0x1E221000, 0x1E222700 },   // m0004_ride_dragon_lower b16 -> 8D6C25B2
+        { 1, 0x0EE00, 0x1E221000, 0x1E222700 },   // m0004_ride_dragon_lower b17 -> 8AE6B609
+        { 1, 0x0EE38, 0x04222200, 0x04222700 },   // m0004_ride_dragon_lower b18 -> 117F8F51
+        { 1, 0x0EE70, 0x1E220F00, 0x1E222700 },   // m0004_ride_dragon_lower b19 -> 117F8F51
+        { 1, 0x0EEA8, 0x1E220F00, 0x1E222700 },   // m0004_ride_dragon_lower b20 -> 117F8F51
+        { 1, 0x0F3B0, 0x1E222200, 0x1E222700 },   // m0004_ride_dragon_lower b43 -> 570E1E87
+        { 1, 0x0F3E8, 0x1E222200, 0x1E222700 },   // m0004_ride_dragon_lower b44 -> 38BD703A
+        { 2, 0x0BF4F, 0x1E222200, 0x1E222700 },   // m0004_ride_dragon_upper b0 -> 117F8F51
+        { 2, 0x0C25F, 0x1E222200, 0x1E222700 },   // m0004_ride_dragon_upper b14 -> E066175D
+        { 2, 0x0C2CF, 0x1E220F00, 0x1E222700 },   // m0004_ride_dragon_upper b16 -> E066175D
+        { 2, 0x0C307, 0x1E222200, 0x1E222700 },   // m0004_ride_dragon_upper b17 -> E066175D
+        { 2, 0x0C4FF, 0x1E222200, 0x1E222700 },   // m0004_ride_dragon_upper b26 -> E066175D
+        { 2, 0x0C537, 0x04220F00, 0x04222700 },   // m0004_ride_dragon_upper b27 -> 117F8F51
+        { 2, 0x0D13F, 0x1E222200, 0x1E222700 },   // m0004_ride_dragon_upper b82 -> 5FF14EB6
+        { 2, 0x0D1AF, 0x1E222200, 0x1E222700 },   // m0004_ride_dragon_upper b84 -> 5FF14EB6
+        { 2, 0x0D21F, 0x1E220F00, 0x1E222700 },   // m0004_ride_dragon_upper b86 -> 117F8F51
     };
 }

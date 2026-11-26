@@ -5,8 +5,8 @@
 #include "game/damianepatches.h"
 #include "game/tablefile.h"
 
-// A copy of Broomy's damiane.h and damianepatches.h (Broomy 7e2bb3c, exe
-// 1.0.0.3424). The plugin includes neither: riderfind.cpp finds Kliff's words
+// A copy of Broomy's damiane.h and damianepatches.h (Broomy a6c11a1, exe
+// 1.0.0.3840). The plugin includes neither: riderfind.cpp finds Kliff's words
 // in Broomy's spliced charts by what they are, and `build.bat riderfind
 // CHARTS SPLICED` checks that on charts these splices build.
 //
