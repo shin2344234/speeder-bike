@@ -337,7 +337,9 @@ int main(int argc, char** argv)
         const bool b = a && build(true, withBroomy, out);
         // 3840's markup draws a mount by a property line, not a component of its own.
         const bool byProperty = m < 2 && game.find("MapIcon_ActorVehicleAlpineIbex_Hired") == std::string::npos;
-        const std::string drawn = byProperty ? "PropertyCondition=\"VehicleSpeeder\""
+        const bool mount = binary && game.find("MapIcon_ActorVehicleAlpineIbex_Hired") == std::string::npos;
+        const std::string propertyRecord = std::string(1, 1) + std::string(3, 0) + std::string(1, 14) + std::string(3, 0) + "VehicleSpeeder";
+        const std::string drawn = mount ? propertyRecord.substr(4) : byProperty ? "PropertyCondition=\"VehicleSpeeder\""
                                   : m < 2 || binary ? "MapIcon_ActorVehicleSpeeder_Hired" : "textureid(cd_Icon_map_Speeder)";
         char what[160];
         snprintf(what, sizeof what, "%s draws Broomy and the speeder", file);
@@ -347,7 +349,33 @@ int main(int argc, char** argv)
         const bool c = build(true, game, alone);
         if (!c) printf("         %s\n", why.c_str());
         Expect(c && alone.find(drawn) != std::string::npos, what);
-        if (binary && c)
+        if (mount && c)
+        {
+            // 3840: a mount record copied after the ibex's, the list's count one up and nothing else moved.
+            const std::string ibexProp = std::string(1, 1) + std::string(3, 0) + std::string(1, 17) + std::string(3, 0) +
+                                         "VehicleAlpineIbex" + std::string(1, 0) + std::string(1, 9) + std::string(1, 0) + std::string(1, 6);
+            const size_t e = game.find(ibexProp);
+            size_t i = 0;
+            while (i < game.size() && i < alone.size() && game[i] == alone[i]) ++i;
+            const size_t grew = alone.size() - game.size();
+            bool same = e != std::string::npos && i + 4 <= e && grew > 0;
+            if (same)
+            {
+                uint32_t was, count;
+                const size_t w = i & ~size_t(0);   // the count's low byte is the first byte that differs
+                memcpy(&was, &game[w], 4);
+                memcpy(&count, &alone[w], 4);
+                const size_t after = e + ibexProp.size();
+                same = count == was + 1 && was > 1 && was < 1000 && game[w - 1] == 1 &&
+                       alone.compare(w + 4, after - (w + 4), game, w + 4, after - (w + 4)) == 0 &&
+                       alone.compare(after + grew, std::string::npos, game, after, std::string::npos) == 0 &&
+                       alone.find(propertyRecord.substr(4), after) != std::string::npos;
+            }
+            snprintf(what, sizeof what, "%s: one property record more, the list's count one up, the file %zu bytes longer",
+                     file, grew);
+            Expect(same, what);
+        }
+        else if (binary && c)
         {
             // The record's own check: the copy is the ibex's with AlpineIbex
             // renamed and each string's length fixed, and the count is one up.
