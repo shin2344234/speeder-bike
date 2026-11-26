@@ -64,7 +64,17 @@ namespace
     volatile LONG g_armed = 0;
     volatile LONG g_candidate = 0;      // the last unowned wild horse seen
     volatile LONG g_candidateRow = 0;
-    volatile LONG g_target = 0;         // the horse the server was asked to hire
+    // Horses that qualified before the current candidate, with their rows
+    // and the second they were last seen. With Broomy installed, both grants
+    // can pick the same horse in the same tick; on 3840 Broomy's hire won,
+    // the speeder's failed, and the speeder waited a minute for the server
+    // to look up another horse (Seth, 26 November 2026). A miss now moves to
+    // the newest of these that was seen in the last kSpareSecs.
+    constexpr int kSpares = 4;
+    constexpr LONG kSpareSecs = 10;
+    volatile LONG g_spare[kSpares] = {}, g_spareRow[kSpares] = {}, g_spareSeen[kSpares] = {};
+    volatile LONG g_spareNext = 0;
+    volatile LONG g_target = 0;        // the horse the server was asked to hire
     volatile LONG g_sentAt = 0;
     volatile LONG g_tries = 0;
     volatile LONG g_waitLogged = 0;
@@ -200,12 +210,57 @@ namespace
         // same server tick, before the speeder's, and its hire looks the horse
         // up with Broomy's row already written in, so a horse Broomy took
         // stops passing here and is dropped before the speeder tries it.
+        const LONG lid = static_cast<LONG>(id);
+        const LONG oldRow = g_candidateRow;   // the current candidate's, until Qualifies passes
         if (!Qualifies(out))
         {
-            InterlockedCompareExchange(&g_candidate, 0, static_cast<LONG>(id));
+            InterlockedCompareExchange(&g_candidate, 0, lid);
+            for (int i = 0; i < kSpares; ++i) InterlockedCompareExchange(&g_spare[i], 0, lid);
             return;
         }
-        InterlockedExchange(&g_candidate, static_cast<LONG>(id));
+        for (int i = 0; i < kSpares; ++i)
+            if (g_spare[i] == lid)
+            {
+                InterlockedExchange(&g_spareSeen[i], now);
+                InterlockedExchange(&g_spareRow[i], g_candidateRow);
+            }
+        const LONG old = InterlockedExchange(&g_candidate, lid);
+        if (!old || old == lid) return;
+        for (int i = 0; i < kSpares; ++i)
+            if (g_spare[i] == old)
+            {
+                InterlockedExchange(&g_spareSeen[i], now);
+                return;
+            }
+        const int slot = static_cast<int>(static_cast<ULONG>(InterlockedIncrement(&g_spareNext)) % kSpares);
+        InterlockedExchange(&g_spareSeen[slot], now);
+        InterlockedExchange(&g_spareRow[slot], oldRow);
+        InterlockedExchange(&g_spare[slot], old);
+    }
+
+    // The newest spare seen in the last kSpareSecs that no try has used,
+    // made the candidate. False when there is none.
+    bool PromoteSpare(LONG missed)
+    {
+        const LONG now = static_cast<LONG>(GetTickCount() / 1000);
+        int best = -1;
+        for (int i = 0; i < kSpares; ++i)
+        {
+            const LONG id = g_spare[i];
+            if (!id || id == missed || Rejected(id) || now - g_spareSeen[i] > kSpareSecs) continue;
+            if (best < 0 || g_spareSeen[i] > g_spareSeen[best]) best = i;
+        }
+        if (best < 0) return false;
+        const LONG id = InterlockedExchange(&g_spare[best], 0);
+        if (!id) return false;
+        InterlockedExchange(&g_candidateRow, g_spareRow[best]);
+        InterlockedExchange(&g_candidate, id);
+        return true;
+    }
+
+    void ClearSpares()
+    {
+        for (int i = 0; i < kSpares; ++i) InterlockedExchange(&g_spare[i], 0);
     }
 
     uint64_t LookupDetour(uintptr_t manager, uintptr_t out, uintptr_t id)
@@ -245,14 +300,15 @@ namespace
         const LONG n = InterlockedIncrement(&g_tries);
         if (n >= 1 && n <= kGrantTries) InterlockedExchange(&g_rejected[n - 1], target);
         if (g_candidate == target) InterlockedExchange(&g_candidate, 0);
+        const bool spare = n < kGrantTries && !g_candidate && PromoteSpare(target);
         InterlockedExchange(&g_waitLogged, 0);
         InterlockedExchange(&g_target, 0);
         if (n >= kGrantTries)
             LOG_ERR("[grant] horse %08X %s. That was try %ld of %d, so the grant stops until the next load.",
                     static_cast<uint32_t>(target), why, n, kGrantTries);
         else
-            LOG("[grant] horse %08X %s. Try %ld of %d; the next goes to another wild horse.",
-                static_cast<uint32_t>(target), why, n, kGrantTries);
+            LOG("[grant] horse %08X %s. Try %ld of %d; the next goes to %s.", static_cast<uint32_t>(target), why, n,
+                kGrantTries, spare ? "a horse seen a moment ago" : "the next wild horse the server looks up");
     }
 
     // The grant hires on the server's own thread, from the handler of the
@@ -839,6 +895,7 @@ namespace bm::grant
             {
                 InterlockedExchange(&g_armed, 0);
                 InterlockedExchange(&g_candidate, 0);
+                ClearSpares();
                 LOG("[grant] the speeder is in the roster after all (%d roster%s), so nothing is given.", rosters,
                     rosters == 1 ? "" : "s");
             }
