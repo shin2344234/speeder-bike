@@ -347,6 +347,71 @@ namespace
         }
     }
 
+    // The request ids, read from the game's own message descriptors at
+    // install (signatures.h). They stay 0xFFFF, which no message uses, until
+    // then.
+    uint16_t kReq_LoadingComplete = 0xFFFF;
+    uint16_t kReq_WedgeChoice = 0xFFFF;
+    uint16_t kReq_MountCall = 0xFFFF;
+
+    struct ReqScan
+    {
+        uintptr_t vt[3];
+        uintptr_t desc[3];
+        int       seen[3];
+    };
+
+    // `lea rax,[vtable]; mov [descriptor],rax`: the descriptor of each message
+    // whose vtable the lea loads.
+    bool ReqVisit(uintptr_t hit, void* ctx)
+    {
+        auto* s = static_cast<ReqScan*>(ctx);
+        const uintptr_t vt = bm::mem::RipAt(hit, 7);
+        for (int i = 0; i < 3; ++i)
+            if (vt == s->vt[i])
+            {
+                const uintptr_t desc = bm::mem::RipAt(hit + 7, 7);
+                if (s->desc[i] != desc) ++s->seen[i];
+                s->desc[i] = desc;
+            }
+        return false;
+    }
+
+    bool ReadRequestIds()
+    {
+        const char* names[3] = { kRtti_ReqLoadingComplete, kRtti_ReqWedgeChoice, kRtti_ReqMountCall };
+        ReqScan scan = {};
+        for (int i = 0; i < 3; ++i)
+        {
+            uintptr_t vt[2] = {};
+            if (bm::mem::FindVtablesByName(names[i], vt, 2) != 1)
+            {
+                LOG_ERR("[grant] the message %s was not found, so the speeder is not given this session.", names[i] + 4);
+                return false;
+            }
+            scan.vt[i] = vt[0];
+        }
+        bm::mem::FindIf(kSig_ReqRegister, &ReqVisit, &scan);
+        uint16_t ids[3] = {};
+        for (int i = 0; i < 3; ++i)
+        {
+            uint32_t four = 0;
+            if (scan.seen[i] != 1 || !bm::mem::Read32(scan.desc[i] + kOff_ReqDesc_Four, &four) || four != 4 ||
+                !bm::mem::Read16(scan.desc[i] + kOff_ReqDesc_Id, &ids[i]) || ids[i] == 0xFFFF)
+            {
+                LOG_ERR("[grant] the id of %s could not be read (descriptors found %d), so the speeder is not given "
+                        "this session.", names[i] + 4, scan.seen[i]);
+                return false;
+            }
+        }
+        kReq_LoadingComplete = ids[0];
+        kReq_WedgeChoice = ids[1];
+        kReq_MountCall = ids[2];
+        LOG("[grant] request ids: loading complete 0x%04X, wedge choice 0x%04X, mount call 0x%04X.", ids[0], ids[1],
+            ids[2]);
+        return true;
+    }
+
     uint64_t SendDetour(uintptr_t ctx, uintptr_t buffer, uintptr_t kind, uintptr_t message, uintptr_t length,
                         uintptr_t a6, uintptr_t a7)
     {
@@ -701,6 +766,7 @@ namespace bm::grant
     bool Install(bool give)
     {
         g_give = give;
+        if (!ReadRequestIds()) return false;
         const uintptr_t send = farhook::Locate(kSig_SendRequest, kRva_SendRequest, kRva3732_SendRequest);
         uintptr_t hire = farhook::Locate(kSig_ServerHire, kRva_ServerHire, kRva3732_ServerHire);
         if (!hire) hire = farhook::Locate(kSig_ServerHire3840, kRva_ServerHire, kRva3732_ServerHire);

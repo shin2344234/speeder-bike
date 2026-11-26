@@ -135,9 +135,16 @@ namespace bm::sig
     // 3663 renumbered them again (3576's in braces); each is the u16 at +0xC
     // of the request's static descriptor, after the kind 4 at +8, the global
     // its registration stub stores the class's vtable into.
-    inline constexpr uint16_t kReq_LoadingComplete = 0x0AE5;   // TrocTrLoadingCompleteReq (0x098D) {0x0877}
-    inline constexpr uint16_t kReq_WedgeChoice = 0x0B3F;       // a radial wedge chosen, reserve slot at +5 (0x0AC1) {0x08F3}
-    inline constexpr uint16_t kReq_MountCall = 0x0C4F;         // the mount called (0x0876) {0x0A53}
+    // 3663 and 3732 had LoadingComplete 0x0AE5, the wedge choice 0x0B3F and
+    // the mount call 0x0C4F; 3840 renumbered them to 0x0AD9, 0x0A30 and
+    // 0x0AC3. The plugin reads them at startup from those descriptors, as
+    // Broomy does, so a renumbering no longer stops the grant.
+    inline constexpr const char* kRtti_ReqLoadingComplete = ".?AVTrocTrLoadingCompleteReq@pa@@";
+    inline constexpr const char* kRtti_ReqWedgeChoice = ".?AVTrocTrChangeUseItemReserveSlotReq@pa@@";
+    inline constexpr const char* kRtti_ReqMountCall = ".?AVTrocTrFrameEventCallMercenaryReq@pa@@";
+    inline constexpr const char* kSig_ReqRegister = "48 8D 05 ?? ?? ?? ?? 48 89 05";
+    inline constexpr unsigned kOff_ReqDesc_Four = 0x08;
+    inline constexpr unsigned kOff_ReqDesc_Id = 0x0C;
     // TrocTrHireMercenaryToTargetReq: u16 id, u8 0, u16 payload length 5,
     // u32 actor id, u8 0. The server hires that actor for the sender.
     inline constexpr uint16_t kReq_HireToTarget = 0x0A09;      // (0x0B8F) {0x0A63}
