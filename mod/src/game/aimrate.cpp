@@ -29,9 +29,9 @@ namespace
     // game used one of the two spellings' hashes, so both are checked. The
     // broom's aim gets kRate on every frame and skips the pull; every other
     // aim IK runs the shipped instructions.
-    constexpr uintptr_t kRva_Site = 0x1321129;   // 0x131F5A9 on 3663, 0x12E1E69 on 3576
-    constexpr uintptr_t kRva_Pull = 0x1321133;   // 0x131F5B3 on 3663, 0x12E1E73 on 3576
-    constexpr uintptr_t kRva_Solve = 0x1321173;  // 0x131F5F3 on 3663, 0x12E1EB3 on 3576
+    // Site, pull and solve on 3840, then on 3732 (0x131F5A9 on 3663, 0x12E1E69
+    // on 3576). The set whose pull head is found is the one used.
+    constexpr uintptr_t kSets[2][3] = { { 0x13A2879, 0x13A2883, 0x13A28C3 }, { 0x1321129, 0x1321133, 0x1321173 } };
     constexpr unsigned char kSite[] = { 0xC5, 0xF0, 0x57, 0xC9, 0xC5, 0xF8, 0x2F, 0xF9, 0x76, 0x40 };
     constexpr unsigned char kPullHead[] = { 0xC4, 0x41, 0x78, 0x2F, 0xC2 };
     constexpr float kRate = 1.0f;   // per second: a 90 degree swing is 90 percent done in 2.3 s
@@ -50,12 +50,22 @@ namespace bm::aimrate
     {
         const uintptr_t base = bm::mem::Game().base;
         unsigned char pull[sizeof kPullHead] = {};
-        if (!bm::mem::ReadBytes(base + kRva_Pull, pull, sizeof pull) || memcmp(pull, kPullHead, sizeof pull) != 0)
+        int set = -1;
+        for (int i = 0; i < 2 && set < 0; ++i)
         {
-            LOG_ERR("[aim] the aim IK's rate code is not at +0x%llX on this exe, so the broom turns to the camera at "
-                    "the game's speed.", static_cast<unsigned long long>(kRva_Pull));
+            unsigned char site[sizeof kSite] = {};
+            if (bm::mem::ReadBytes(base + kSets[i][1], pull, sizeof pull) && memcmp(pull, kPullHead, sizeof pull) == 0 &&
+                bm::mem::ReadBytes(base + kSets[i][0], site, sizeof site) && memcmp(site, kSite, sizeof site) == 0)
+                set = i;
+        }
+        if (set < 0)
+        {
+            LOG_ERR("[aim] the aim IK's rate code is not at +0x%llX or +0x%llX on this exe, so the broom turns to the "
+                    "camera at the game's speed.", static_cast<unsigned long long>(kSets[0][1]),
+                    static_cast<unsigned long long>(kSets[1][1]));
             return false;
         }
+        const uintptr_t kRva_Site = kSets[set][0], kRva_Pull = kSets[set][1], kRva_Solve = kSets[set][2];
         const uint32_t body = bm::hash::Little("b_body_00");
         const uint32_t bodyAsWritten = bm::hash::Little("B_Body_00");
         uint32_t rate;

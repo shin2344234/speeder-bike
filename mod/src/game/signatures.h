@@ -24,14 +24,19 @@ namespace bm::sig
     // an entry no longer matches once a hook is on it. 3663's and 3576's in
     // comments. On 3732 with the 3663 values, Broomy hid the patterns and
     // the stale addresses held no jump, so the speeder was not served.
-    inline constexpr uintptr_t kRva_LoaderFindSource = 0x14F06D0;     // 0x14EEB50, 0x14AFC30
-    inline constexpr uintptr_t kRva_LoaderIndexOf = 0x14F1C70;         // 0x14F00F0, 0x14B11D0
-    inline constexpr uintptr_t kRva_LoaderExists = 0x14F1CE0;          // 0x14F0160, 0x14B1240
-    inline constexpr uintptr_t kRva_ResourceRead = 0x14F0970;          // 0x14EEDF0, 0x14AFED0
-    inline constexpr uintptr_t kRva_AppearanceLoad = 0x26A0E30;        // 0x269E6D0, 0x262FCC0
-    inline constexpr uintptr_t kRva_SendRequest = 0x3A9D70;            // 0x3A9960, 0x3A6310
-    inline constexpr uintptr_t kRva_ServerHire = 0x2EBBF00;            // 0x2EB77A0, 0x2E4F970
-    inline constexpr uintptr_t kRva_ServerMoveHandler = 0x2C57D00;     // 0x2C53270, 0x2BED7D0
+    inline constexpr uintptr_t kRva_LoaderFindSource = 0x15793A0;     // 0x14F06D0 on 3732, 0x14EEB50, 0x14AFC30
+    inline constexpr uintptr_t kRva_LoaderIndexOf = 0x157A940;         // 0x14F1C70 on 3732, 0x14F00F0, 0x14B11D0
+    inline constexpr uintptr_t kRva_LoaderExists = 0x157A9B0;          // 0x14F1CE0 on 3732, 0x14F0160, 0x14B1240
+    inline constexpr uintptr_t kRva_ResourceRead = 0x1579640;          // 0x14F0970 on 3732, 0x14EEDF0, 0x14AFED0
+    inline constexpr uintptr_t kRva_AppearanceLoad = 0x2790750;        // 0x26A0E30 on 3732, 0x269E6D0, 0x262FCC0
+    inline constexpr uintptr_t kRva_SendRequest = 0x3B52C0;            // 0x3A9D70 on 3732, 0x3A9960, 0x3A6310
+    inline constexpr uintptr_t kRva_ServerHire = 0x3000BF0;            // 0x2EBBF00 on 3732, 0x2EB77A0, 0x2E4F970
+    // Each also has its 3732 address below, kept for that build.
+    inline constexpr uintptr_t kRva3732_LoaderFindSource = 0x14F06D0, kRva3732_LoaderIndexOf = 0x14F1C70,
+                               kRva3732_LoaderExists = 0x14F1CE0, kRva3732_ResourceRead = 0x14F0970,
+                               kRva3732_AppearanceLoad = 0x26A0E30, kRva3732_SendRequest = 0x3A9D70,
+                               kRva3732_ServerHire = 0x2EBBF00, kRva3732_ServerMoveHandler = 0x2C57D00;
+    inline constexpr uintptr_t kRva_ServerMoveHandler = 0x2D90290;     // 0x2C57D00 on 3732, 0x2C53270, 0x2BED7D0
 
     // ---- Files -------------------------------------------------------------
 
@@ -47,10 +52,10 @@ namespace bm::sig
         "48 89 5C 24 18 48 89 54 24 10 55 56 57 41 56 41 57 48 81 EC 90 00 00 00 41 8B E9 4D";
     inline constexpr const char* kSig_LoaderExists =
         "48 89 5C 24 08 48 89 74 24 10 57 48 83 EC 20 33 DB 48 8B F2 48 8B F9 39 59 18 76 20 0F 1F 40 00 "
-        "48 8B 47 10 48 8B D6 48 8B 0C D8 48 8B 01 FF 50 50 84 C0 75 0C";
+        "48 8B 47 10 48 8B D6 48 8B 0C D8 48 8B 01 FF 50 ?? 84 C0 75 0C";
     inline constexpr const char* kSig_LoaderIndexOf =
         "48 89 5C 24 08 48 89 74 24 10 57 48 83 EC 20 33 DB 48 8B F2 48 8B F9 39 59 18 76 20 0F 1F 40 00 "
-        "48 8B 47 10 48 8B D6 48 8B 0C D8 48 8B 01 FF 50 50 84 C0 75 1C FF C3 3B 5F 18 72 E4 B8 FF FF FF FF";
+        "48 8B 47 10 48 8B D6 48 8B 0C D8 48 8B 01 FF 50 ?? 84 C0 75 1C FF C3 3B 5F 18 72 E4 B8 FF FF FF FF";
 
     // Read, slot 8 (+0x14A9690): (loader, path, buffer, name, u32, u32, u32
     // flags). It finds the source and has it fill the buffer. The path is an
@@ -81,6 +86,7 @@ namespace bm::sig
     // copy calls the same two (+0x4AF3E08, +0x4AF3D40), so the first will do.
     // The byte was +0x1FD on 2976: 3392 has 1,680 `mov r15d,1FEh` where
     // 2976 had its `mov r15d,1FDh`, and no 0x1FD form at all.
+    // 0x20E from 3840, read from the buffer release's code at install.
     inline constexpr unsigned    kOff_Block_AllocFlag = 0x1FE;
     inline constexpr const char* kSig_AllocIdiom = "BA 10 00 00 00 B9 18 00 00 00 41 80 3F 00 74 07 E8 ?? ?? ?? ?? EB 05 E8";
     inline constexpr unsigned    kOff_AllocIdiom_Set = 16;
@@ -123,7 +129,7 @@ namespace bm::sig
     // added a call before the allocator flag's `mov ebp,1FEh`.
     inline constexpr const char* kSig_SendRequest =
         "48 89 5C 24 10 4C 89 4C 24 20 55 56 57 41 54 41 55 41 56 41 57 48 83 EC 20 45 8B E0 4C 8B F2 4C 8B E9 "
-        "E8 ?? ?? ?? ?? BD FE 01 00 00";
+        "E8 ?? ?? ?? ?? BD ?? ?? 00 00";
     // Request ids, each matched on 3392 by the one function that sends it
     // (2976 ids in brackets). 3392 gave 0x098D and 0x0AC1 to other messages.
     // 3663 renumbered them again (3576's in braces); each is the u16 at +0xC
@@ -142,6 +148,10 @@ namespace bm::sig
     // row's _mercenaryInfo. The first twelve bytes are two stores and two
     // pushes. 3663 dropped the store of rcx and keeps it in rsi, so the
     // first twelve bytes are a store, a store and two pushes.
+    // The hire on 3840: the 3576 head again, with the lookup call at +0xB3.
+    inline constexpr const char* kSig_ServerHire3840 =
+        "48 89 5C 24 10 4C 89 44 24 18 48 89 4C 24 08 55 56 57 41 54 41 55 41 56 41 57 48 8D 6C 24 C0 "
+        "48 81 EC 40 01 00 00 45 0F B6 E9 49 8B F8 4C 8B F2";
     inline constexpr const char* kSig_ServerHire =
         "48 89 5C 24 10 4C 89 44 24 18 55 56 57 41 54 41 55 41 56 41 57 48 8D 6C 24 C0 "
         "48 81 EC 40 01 00 00 45 0F B6 E9 49 8B F8 4C 8B FA 48 8B F1";
@@ -224,13 +234,15 @@ namespace bm::sig
         "E8 ?? ?? ?? ?? 48 8B D0";
     inline constexpr unsigned kOff_CallCheck_Lookup = 0x22;
     // `lea rcx,[rbp-50h]` on 3663, one byte nearer than 3576's +0x7A.
-    inline constexpr unsigned kOff_CallCheck_ReleaseSig = 0x79;
+    // 3840 has it at +0x7A and the groggy test at +0xFC again, as 3576 did;
+    // the first pair where both match is used.
+    inline constexpr unsigned kOff_CallCheck_ReleaseSigs[2] = { 0x79, 0x7A };
     inline constexpr const char* kSig_CallCheckRelease = "48 8D 4D ?? E8";
     // `mov rcx,rbx; call +0x18C57E0`, the groggy test, which the game runs
     // under its own reader lock on [[status+8]+8]. The hook goes on the E8, 3
     // bytes after the start of the pattern (+0x8DE937; +0x90E124 on 3663,
     // whose pattern is at +0xF7 where 3576's was at +0xFC).
-    inline constexpr unsigned kOff_CallCheck_GroggySig = 0xF7;
+    inline constexpr unsigned kOff_CallCheck_GroggySigs[2] = { 0xF7, 0xFC };
     inline constexpr const char* kSig_CallCheckGroggy = "48 8B CB E8";
     inline constexpr unsigned kOff_MountComp_Actor = 0x08;
     inline constexpr unsigned kOff_Status_DeadA = 0x292;

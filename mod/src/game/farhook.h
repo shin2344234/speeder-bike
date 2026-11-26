@@ -50,9 +50,10 @@ namespace bm::farhook
     bool Patched(uintptr_t target);
     // A function by its pattern, which starts at its entry. Broomy.asi loads
     // first and patches some of the same entries, so when the pattern finds
-    // nothing and the entry at `rva` (exe 1.0.0.3663) is patched, that is
+    // nothing and the entry at `rva` (exe 1.0.0.3840) is patched, that is
     // the function.
-    uintptr_t Locate(const char* pattern, uintptr_t rva);
+    // `rvaOlder` is the same entry on the build before, so that one still works.
+    uintptr_t Locate(const char* pattern, uintptr_t rva, uintptr_t rvaOlder = 0);
     // Install, InstallOverAbsJump or InstallOverJump, whichever the entry
     // needs: the detour runs first, then the other mod's, then the game's.
     bool Chain(const char* name, uintptr_t target, void* detour, void** original, char* why, unsigned whyLen);

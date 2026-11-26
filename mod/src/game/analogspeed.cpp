@@ -19,9 +19,10 @@ namespace
     // 0x30 back down from 3462's +0xBC5A20 3527 0x1080 up again and 3576 another 0x420, with the code unchanged. The lea's base
     // register was r13 on 2976 and is r14 since 3392.
     constexpr const char* kSig_MoveUpdateCall =
-        "4D 8D ?? 04 01 00 00 4C 8D 45 B0 48 8B CF E8 ?? ?? ?? ?? C5 7A 10 55 C4";
+        "4D 8D ?? ?? ?? 00 00 4C 8D 45 B0 48 8B CF E8 ?? ?? ?? ?? C5 7A 10 55 C4";
     constexpr unsigned kCallOffset = 14;
-    constexpr uintptr_t kRva_MoveUpdate = 0xBFF150;   // 0xBFE700 on 3663, 0xBC6E90 on 3576, 0xBC6A70 on 3527, 0xBC59F0 on 3479, 0xBC5A20 on 3462, 0xBC4A90 on 3446, 0xBC49D0 on 3424, 0xBC41D0 on 3392
+    constexpr uintptr_t kRva3732_MoveUpdate = 0xBFF150;
+    constexpr uintptr_t kRva_MoveUpdate = 0xC4A980;   // 0xBFF150 on 3732, 0xBFE700 on 3663, 0xBC6E90 on 3576, 0xBC6A70 on 3527, 0xBC59F0 on 3479, 0xBC5A20 on 3462, 0xBC4A90 on 3446, 0xBC49D0 on 3424, 0xBC41D0 on 3392
 
     // The speed record's word 6 (+0x18) is the state's speed in m/s. The
     // caller keeps the speed it started moving at in the object at +0x11C
@@ -260,7 +261,8 @@ namespace bm::analogspeed
         const uintptr_t at = mem::FindUnique(kSig_MoveUpdateCall);
         if (!at) return false;
         const uintptr_t to = mem::RipAt(at + kCallOffset, 5);
-        return to != mem::Game().base + kRva_MoveUpdate && farhook::AbsJumpTarget(to) != 0;
+        return to != mem::Game().base + kRva_MoveUpdate && to != mem::Game().base + kRva3732_MoveUpdate &&
+               farhook::AbsJumpTarget(to) != 0;
     }
 
     float LastSpeed(uint32_t* age, bool* boost)

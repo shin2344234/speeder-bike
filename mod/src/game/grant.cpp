@@ -643,8 +643,14 @@ namespace
     {
         size_t hits = 0;
         const uintptr_t at = bm::mem::FindUnique(kSig_CallCheck, &hits);
-        const uintptr_t release = at && bm::mem::MatchAt(at + kOff_CallCheck_ReleaseSig, kSig_CallCheckRelease)
-                                      ? CallTarget(at + kOff_CallCheck_ReleaseSig + 4) : 0;
+        int pair = -1;
+        for (int i = 0; at && i < 2 && pair < 0; ++i)
+            if (bm::mem::MatchAt(at + kOff_CallCheck_ReleaseSigs[i], kSig_CallCheckRelease) &&
+                bm::mem::MatchAt(at + kOff_CallCheck_GroggySigs[i], kSig_CallCheckGroggy))
+                pair = i;
+        const unsigned kOff_CallCheck_ReleaseSig = pair >= 0 ? kOff_CallCheck_ReleaseSigs[pair] : 0;
+        const unsigned kOff_CallCheck_GroggySig = pair >= 0 ? kOff_CallCheck_GroggySigs[pair] : 0;
+        const uintptr_t release = pair >= 0 ? CallTarget(at + kOff_CallCheck_ReleaseSig + 4) : 0;
         if (!at || !release)
         {
             LOG_ERR("[faint] the mount call's check was found %zu times (release %s), so a fainted speeder waits as the "
@@ -695,11 +701,20 @@ namespace bm::grant
     bool Install(bool give)
     {
         g_give = give;
-        const uintptr_t send = farhook::Locate(kSig_SendRequest, kRva_SendRequest);
-        const uintptr_t hire = farhook::Locate(kSig_ServerHire, kRva_ServerHire);
-        const uintptr_t move = farhook::Locate(kSig_ServerMoveHandler, kRva_ServerMoveHandler);
-        const uintptr_t lookup = hire && mem::MatchAt(hire + kOff_Hire_LookupCallSig, kSig_HireLookupCall)
-                                     ? CallTarget(hire + kOff_Hire_LookupCall) : 0;
+        const uintptr_t send = farhook::Locate(kSig_SendRequest, kRva_SendRequest, kRva3732_SendRequest);
+        uintptr_t hire = farhook::Locate(kSig_ServerHire, kRva_ServerHire, kRva3732_ServerHire);
+        if (!hire) hire = farhook::Locate(kSig_ServerHire3840, kRva_ServerHire, kRva3732_ServerHire);
+        const uintptr_t move = farhook::Locate(kSig_ServerMoveHandler, kRva_ServerMoveHandler, kRva3732_ServerMoveHandler);
+        // The lookup call is at +0xB0 up to 3732 and +0xB3 on 3840: the first
+        // `mov rcx,[rcx+50h]; call` in a short window whose target is the
+        // lookup, or is already hooked.
+        uintptr_t lookup = 0;
+        for (unsigned off = kOff_Hire_LookupCallSig; hire && !lookup && off <= kOff_Hire_LookupCallSig + 0x10; ++off)
+            if (mem::MatchAt(hire + off, kSig_HireLookupCall))
+            {
+                const uintptr_t target = CallTarget(hire + off + 4);
+                if (target && (mem::MatchAt(target, kSig_ActorLookup) || farhook::Patched(target))) lookup = target;
+            }
         if (!send || !hire || !lookup || !move || !(mem::MatchAt(lookup, kSig_ActorLookup) || farhook::Patched(lookup)))
         {
             LOG_ERR("[grant] the request sender (%s), the server's hire (%s), its actor lookup (%s) or the server's "

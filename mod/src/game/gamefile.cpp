@@ -68,13 +68,18 @@ namespace
     bm::gamefile::Seen volatile g_seen = nullptr;
     bm::gamefile::Supply volatile g_supply = nullptr;
 
-    // The thread block's job pointer (+0x1E0): set on the loader's own
-    // threads, where the async slot queues a task instead of calling Read.
+    // The thread block's job pointer (+0x1E0, +0x1F0 from 3840): set on the
+    // loader's own threads, where the async slot queues a task instead of
+    // calling Read. It is read from the game's code at install, with the
+    // allocator byte's offset (+0x1FE, +0x20E from 3840).
+    unsigned g_jobOffset = 0x1E0;
+    unsigned g_flagOffset = kOff_Block_AllocFlag;
+
     uintptr_t* JobSlot()
     {
         const uintptr_t slots = __readgsqword(0x58);
         const uintptr_t block = slots ? *reinterpret_cast<uintptr_t*>(slots) : 0;
-        return block ? reinterpret_cast<uintptr_t*>(block + 0x1E0) : nullptr;
+        return block ? reinterpret_cast<uintptr_t*>(block + g_jobOffset) : nullptr;
     }
 
     // The loader of the read Serve is looking at, for ReadFile.
@@ -86,7 +91,7 @@ namespace
     {
         const uintptr_t slots = __readgsqword(0x58);
         const uintptr_t block = slots ? *reinterpret_cast<uintptr_t*>(slots) : 0;
-        return block && *reinterpret_cast<uint8_t*>(block + kOff_Block_AllocFlag) != 0;
+        return block && *reinterpret_cast<uint8_t*>(block + g_flagOffset) != 0;
     }
 
     // The game's buffer, now holding `bytes`, in the game's own allocation.
@@ -358,13 +363,13 @@ namespace bm::gamefile
         g_redirect = hooks.redirect;
         g_readInstead = hooks.readInstead;
         g_patch = hooks.patch;
-        const uintptr_t read = farhook::Locate(kSig_ResourceRead, kRva_ResourceRead);
+        const uintptr_t read = farhook::Locate(kSig_ResourceRead, kRva_ResourceRead, kRva3732_ResourceRead);
         const uintptr_t make = mem::FindUnique(kSig_MakePath);
         uintptr_t empty = make ? mem::RipAt(make + kOff_MakePath_EmptyLea, 7) : 0;
         const uintptr_t release = empty ? mem::FindIf(kSig_ReleasePath, &SameEmpty, &empty) : 0;
         const uintptr_t idiom = mem::Find(kSig_AllocIdiom);
         const uintptr_t bufRelease = mem::FindUnique(kSig_BufferRelease);
-        const uintptr_t appLoad = farhook::Locate(kSig_AppearanceLoad, kRva_AppearanceLoad);
+        const uintptr_t appLoad = farhook::Locate(kSig_AppearanceLoad, kRva_AppearanceLoad, kRva3732_AppearanceLoad);
         if (idiom)
         {
             g_allocSet = reinterpret_cast<FnAlloc>(CallTarget(idiom + kOff_AllocIdiom_Set));
@@ -372,6 +377,20 @@ namespace bm::gamefile
         }
         if (bufRelease)
         {
+            // The release picks its free by the same thread block byte:
+            // `mov rax,gs:[58h]` at +0x3C, then `mov ecx,<offset>` at +0x45.
+            static const uint8_t kFlagCode[10] = { 0x65, 0x48, 0x8B, 0x04, 0x25, 0x58, 0x00, 0x00, 0x00, 0xB9 };
+            uint8_t flagCode[14] = {};
+            uint32_t flagOff = 0;
+            if (bm::mem::ReadBytes(bufRelease + 0x3C, flagCode, sizeof flagCode) &&
+                memcmp(flagCode, kFlagCode, sizeof kFlagCode) == 0)
+            {
+                memcpy(&flagOff, flagCode + 10, 4);
+                if (flagOff >= 0x100 && flagOff < 0x800) g_flagOffset = flagOff;
+                else flagOff = 0;
+            }
+            LOG("[files] the allocator byte is at thread block +0x%X (%s).", g_flagOffset,
+                flagOff ? "read from the buffer release" : "the default, the release code was not as expected");
             g_freeSet = reinterpret_cast<FnFree>(CallTarget(bufRelease + kOff_BufferRelease_FreeSet));
             g_freeClear = reinterpret_cast<FnFree>(CallTarget(bufRelease + kOff_BufferRelease_FreeClear));
             g_tagBytes = reinterpret_cast<volatile LONG*>(mem::RipAt(bufRelease + kOff_BufferRelease_TagBytes, 7));
@@ -406,20 +425,48 @@ namespace bm::gamefile
         uintptr_t vt[2] = {};
         uintptr_t async = 0;
         char why3[96] = "the loader's vtable was not found";
+        // The async load follows Read in the vtable: slot 9 up to 3732, 10
+        // from 3840, where a slot went in at 3.
+        unsigned asyncSlot = kSlot_LoaderAsync;
+        if (mem::FindVtablesByName(kRtti_ResourceLoader, vt, 2) == 1)
+            for (unsigned i = 0; i < 24; ++i)
+            {
+                uintptr_t fn = 0;
+                if (mem::ReadPtr(vt[0] + i * 8, &fn) && fn == read)
+                {
+                    asyncSlot = i + 1;
+                    break;
+                }
+            }
         if (mem::FindVtablesByName(kRtti_ResourceLoader, vt, 2) == 1 &&
-            mem::ReadPtr(vt[0] + kSlot_LoaderAsync * 8, &async) && mem::InImage(async) &&
+            mem::ReadPtr(vt[0] + asyncSlot * 8, &async) && mem::InImage(async) &&
             farhook::Chain("async load", async, reinterpret_cast<void*>(&AsyncDetour),
                              reinterpret_cast<void**>(&g_asyncOriginal), why3, sizeof why3))
-            LOG("[files] loads redirected at the async load, +0x%llX.", static_cast<unsigned long long>(mem::Rva(async)));
+        {
+            // `mov eax,<offset>; cmp qword [rax+rbx],0`, about 0x50 bytes in.
+            uint8_t code[0x120] = {};
+            if (bm::mem::ReadBytes(async, code, sizeof code))
+                for (unsigned i = 0; i + 10 <= sizeof code; ++i)
+                    if (code[i] == 0xB8 && code[i + 5] == 0x48 && code[i + 6] == 0x83 && code[i + 7] == 0x3C &&
+                        code[i + 8] == 0x18 && code[i + 9] == 0x00)
+                    {
+                        uint32_t off = 0;
+                        memcpy(&off, code + i + 1, 4);
+                        if (off >= 0x100 && off < 0x800) g_jobOffset = off;
+                        break;
+                    }
+            LOG("[files] loads redirected at the async load (vtable slot %u), +0x%llX; the job pointer is at thread "
+                "block +0x%X.", asyncSlot, static_cast<unsigned long long>(mem::Rva(async)), g_jobOffset);
+        }
         else
         {
             g_asyncOriginal = nullptr;
             LOG_ERR("[files] the async load could not be hooked (%s), so the speeder keeps the Wyvern's charts.", why3);
             return true;
         }
-        const uintptr_t find = farhook::Locate(kSig_LoaderFindSource, kRva_LoaderFindSource);
-        const uintptr_t exists = farhook::Locate(kSig_LoaderExists, kRva_LoaderExists);
-        const uintptr_t indexOf = farhook::Locate(kSig_LoaderIndexOf, kRva_LoaderIndexOf);
+        const uintptr_t find = farhook::Locate(kSig_LoaderFindSource, kRva_LoaderFindSource, kRva3732_LoaderFindSource);
+        const uintptr_t exists = farhook::Locate(kSig_LoaderExists, kRva_LoaderExists, kRva3732_LoaderExists);
+        const uintptr_t indexOf = farhook::Locate(kSig_LoaderIndexOf, kRva_LoaderIndexOf, kRva3732_LoaderIndexOf);
         char why4[96] = "not found", why5[96] = "not found", why6[96] = "not found";
         const bool f = find && farhook::Chain("loader find", find, reinterpret_cast<void*>(&FindDetour),
                                                 reinterpret_cast<void**>(&g_findOriginal), why4, sizeof why4);

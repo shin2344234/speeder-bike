@@ -351,12 +351,17 @@ namespace bm::farhook
         return target && (AbsJumpTarget(target) || (bm::mem::Read8(target, &op) && op == 0xE9));
     }
 
-    uintptr_t Locate(const char* pattern, uintptr_t rva)
+    uintptr_t Locate(const char* pattern, uintptr_t rva, uintptr_t rvaOlder)
     {
         const uintptr_t hit = bm::mem::FindUnique(pattern);
         if (hit) return hit;
-        const uintptr_t at = bm::mem::Game().base + rva;
-        return bm::mem::Game().base && rva < bm::mem::Game().size && Patched(at) ? at : 0;
+        const uintptr_t tries[2] = { rva, rvaOlder };
+        for (const uintptr_t r : tries)
+        {
+            const uintptr_t at = bm::mem::Game().base + r;
+            if (r && bm::mem::Game().base && r < bm::mem::Game().size && Patched(at)) return at;
+        }
+        return 0;
     }
 
     bool Chain(const char* name, uintptr_t target, void* detour, void** original, char* why, unsigned whyLen)
