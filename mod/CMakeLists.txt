@@ -80,7 +80,7 @@ file(GLOB_RECURSE BM_SPEEDER_ASSETS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DI
 set_source_files_properties(src/speeder.rc PROPERTIES OBJECT_DEPENDS "${BM_SPEEDER_ASSETS}")
 
 target_include_directories(SpeederBike PRIVATE src "${CMAKE_CURRENT_BINARY_DIR}/generated" ${minhook_SOURCE_DIR}/src/hde)
-target_link_libraries(SpeederBike PRIVATE minhook)
+target_link_libraries(SpeederBike PRIVATE minhook version)
 target_compile_definitions(SpeederBike PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS)
 target_compile_options(SpeederBike PRIVATE /utf-8 /W3)
 

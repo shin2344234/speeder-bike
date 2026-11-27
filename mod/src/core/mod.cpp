@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+#include <winver.h>
+
 #include "core/log.h"
 #include "core/paths.h"
 #include "game/broomchart.h"
@@ -35,6 +37,28 @@ namespace
     bool IsGame() { return bm::mem::Game().base && bm::mem::Game().size >= kMinGameImage; }
 
     int Clamp(int v, int lo, int hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+    // The exe's file version, as its version resource has it, so a report
+    // says which build it came from.
+    std::string ExeVersion()
+    {
+        wchar_t path[MAX_PATH] = {};
+        if (!GetModuleFileNameW(nullptr, path, MAX_PATH)) return "unknown";
+        DWORD ignored = 0;
+        const DWORD bytes = GetFileVersionInfoSizeW(path, &ignored);
+        if (!bytes) return "with no version resource";
+        std::vector<uint8_t> buf(bytes);
+        VS_FIXEDFILEINFO* ffi = nullptr;
+        UINT ffiBytes = 0;
+        if (!GetFileVersionInfoW(path, 0, bytes, buf.data()) ||
+            !VerQueryValueW(buf.data(), L"\\", reinterpret_cast<void**>(&ffi), &ffiBytes) || !ffi ||
+            ffi->dwSignature != 0xFEEF04BD)
+            return "unknown";
+        char v[48];
+        snprintf(v, sizeof v, "%u.%u.%u.%u", HIWORD(ffi->dwFileVersionMS), LOWORD(ffi->dwFileVersionMS),
+                 HIWORD(ffi->dwFileVersionLS), LOWORD(ffi->dwFileVersionLS));
+        return v;
+    }
 
     int ReadSetting(const wchar_t* key, int fallback)
     {
@@ -148,8 +172,8 @@ namespace
     {
         WriteDefaultIni();
         const bool give = ReadSetting(L"GiveSpeeder", 1) != 0;
-        LOG("[mod] %s %s for Crimson Desert exe 1.0.0.3732. GiveSpeeder=%d. Broomy is %s.", BM_NAME,
-            BM_VERSION, give ? 1 : 0, g_broomy ? "installed too" : "not installed");
+        LOG("[mod] %s %s, running on Crimson Desert exe %s. GiveSpeeder=%d. Broomy is %s.", BM_NAME,
+            BM_VERSION, ExeVersion().c_str(), give ? 1 : 0, g_broomy ? "installed too" : "not installed");
         if (!g_serving)
             LOG_ERR("[mod] the speeder's files are not being served (see the [files] line above), so the speeder does "
                     "not exist this session.");
