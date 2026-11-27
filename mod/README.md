@@ -1,15 +1,18 @@
-# Speeder Bike 1.0.14
+# Speeder Bike 1.0.15
 
-For Crimson Desert exe 1.0.0.3732 (game 2.05.01, the update of 18 November
-2026), with or without the DLC. On 1.0.0.3663 use 1.0.13. Builds for the
-earlier exes, 1.0.0.3576,
+For Crimson Desert exe 1.0.0.3840 (game 2.06.00, the update of 26 November
+2026), with or without the DLC. On 1.0.0.3732 use 1.0.14, and on 1.0.0.3663
+use 1.0.13. Builds for the earlier exes, 1.0.0.3576,
 1.0.0.3527, 1.0.0.3479, 1.0.0.3462,
 1.0.0.3460, 1.0.0.3446, 1.0.0.3424, 1.0.0.3392 and 1.0.0.2976, do not run
 properly on it.
 
-1.0.14 moves the plugin's fixed addresses to 1.0.0.3732. With Broomy
-installed, 1.0.13 on this exe left the speeder unserved for the session.
-This build was not tested in play.
+1.0.15 is the port to 3840, which changed the layout of the game's tables
+and charts and renumbered the requests the plugin watches. The plugin now
+reads those request ids from the game at startup. In my game on 3840 I
+called the speeder and rode it, and it joined my mounts. That was a test
+build. This release build only adds the exe's version to the startup line
+of the log, and it is not tested in play.
 
 On 1.0.0.3663, 1.0.12 could not give the speeder to a new save, lost the
 fix for calling back a fainted speeder, and let Wyvern sounds, screen
@@ -78,8 +81,8 @@ with a label and range for each.
 ## With Broomy
 
 Both plugins can be installed together, and each mount gets its own entry
-in the saddle wedge. On this exe Broomy needs to be 1.0.14 or newer, its
-first build for 1.0.0.3732. Kliff keeps his speeder pose on the speeder and his
+in the saddle wedge. On this exe Broomy needs to be 1.0.15, its
+first build for 1.0.0.3840. Kliff keeps his speeder pose on the speeder and his
 broom pose on Broomy. With both installed, the engine and the speeder's poses
 follow the mount he is on from the moment he starts getting on, so the
 engine stays quiet on Broomy even when he goes straight from one to the
